@@ -1,38 +1,22 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { type ReactElement } from 'react'
+import { Canvas } from '@react-three/fiber'
+import { OrbitControls, Stats } from '@react-three/drei'
+import { CustomBox } from './components/CustomBox'
 
-function App() {
-    const [count, setCount] = useState(0)
-
+const App = (): ReactElement => {
     return (
-        <>
-            <div>
-                <a href="https://vite.dev" target="_blank">
-                    <img src={viteLogo} className="logo" alt="Vite logo" />
-                </a>
-                <a href="https://react.dev" target="_blank">
-                    <img
-                        src={reactLogo}
-                        className="logo react"
-                        alt="React logo"
-                    />
-                </a>
-            </div>
-            <h1>Vite + React</h1>
-            <div className="card">
-                <button onClick={() => setCount((count) => count + 1)}>
-                    count is {count}
-                </button>
-                <p>
-                    Edit <code>src/App.tsx</code> and save to test HMR
-                </p>
-            </div>
-            <p className="read-the-docs">
-                Click on the Vite and React logos to learn more
-            </p>
-        </>
+        <Canvas>
+            <Stats />
+            <ambientLight intensity={0.7} />
+            <spotLight
+                position={[10, 10, 10]}
+                angle={Math.PI / 2}
+                penumbra={1}
+            />
+            <pointLight position={[-10, -10, -10]} />
+            <CustomBox position={[0, 0, 0]} rotation={[0, Math.PI / 2, 0]} />
+            <OrbitControls />
+        </Canvas>
     )
 }
 
