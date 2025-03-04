@@ -1,0 +1,3 @@
+export const API_URL = ''
+
+export const DEV_MODE = import.meta.env.DEV
