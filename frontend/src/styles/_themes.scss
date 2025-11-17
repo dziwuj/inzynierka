@@ -1,0 +1,23 @@
+@use "./variables" as v;
+
+:root {
+  --color-bg: #{v.$light-bg};
+  --color-text: #{v.$light-text};
+  --color-primary: #{v.$light-primary};
+  --color-secondary: #{v.$light-secondary};
+  --color-accent: #{v.$light-accent};
+  --color-success: #{v.$light-success};
+  --color-warning: #{v.$light-warning};
+  --color-error: #{v.$light-error};
+}
+
+[data-theme="dark"] {
+  --color-bg: #{v.$dark-bg};
+  --color-text: #{v.$dark-text};
+  --color-primary: #{v.$dark-primary};
+  --color-secondary: #{v.$dark-secondary};
+  --color-accent: #{v.$dark-accent};
+  --color-success: #{v.$dark-success};
+  --color-warning: #{v.$dark-warning};
+  --color-error: #{v.$dark-error};
+}

@@ -8,12 +8,23 @@
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
+    "@types/node": "^22.10.2",
     "nodemon": "^3.1.9",
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
   },
   "scripts": {
+    "dev": "nodemon api/server.ts",
     "build": "tsc --build",
-    "start": "node ./dist/index.js",
-    "dev": "nodemon ./src/index.ts"
+    "build:prod": "tsc --build --clean && tsc --build",
+    "start": "node dist/server.js",
+    "start:prod": "NODE_ENV=production node dist/server.js",
+    "docker:dev": "docker compose --env-file .env -f docker/docker-compose.yml up dev",
+    "docker:prod": "docker compose --env-file .env -f docker/docker-compose.yml up prod",
+    "docker:down": "docker compose --env-file .env -f docker/docker-compose.yml down",
+    "docker:rebuild": "docker compose --env-file .env -f docker/docker-compose.yml build --no-cache",
+    "docker:clean": "docker compose --env-file .env -f docker/docker-compose.yml down -v --remove-orphans",
+    "db:start": "docker compose --env-file .env -f docker/docker-compose.yml up -d postgres",
+    "db:stop": "docker compose --env-file .env -f docker/docker-compose.yml stop postgres"
   }
 }
