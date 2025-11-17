@@ -1,0 +1,79 @@
+name: inzynierka-backend
+
+services:
+  # --------------------------------------------------------------------------
+  # Database: TimescaleDB (PostgreSQL)
+  # --------------------------------------------------------------------------
+  postgres:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.db
+    container_name: inzynierka-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${DB_NAME:-inzynierka}
+      DB_OWNER: ${DB_OWNER:-database_owner}
+      DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:-your_db_password}
+      PG_PORT: ${PG_PORT:-5433}
+      PGOPTIONS: "-c env.db_owner=${DB_OWNER:-database_owner} -c env.db_owner_password=${DB_OWNER_PASSWORD:-your_db_password}"
+    ports:
+      - "${PG_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_SUPERUSER:-postgres}"]
+      interval: 5s
+      retries: 10
+    env_file:
+      - ../.env
+
+  # --------------------------------------------------------------------------
+  # Node backend (Dev)
+  # --------------------------------------------------------------------------
+  dev:
+    container_name: backend-dev
+    build:
+      context: ../..
+      dockerfile: backend/docker/Dockerfile
+      target: dev
+    volumes:
+      - ../api:/workspace/backend/api
+      - ../tsconfig.json:/workspace/backend/tsconfig.json
+    ports:
+      - "3000:3000"
+    environment:
+      # Override database connection for Docker network
+      POSTGRES_HOST: postgres
+      PG_PORT: 5432
+      NODE_ENV: development
+    env_file:
+      - ../.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # --------------------------------------------------------------------------
+  # Node backend (Prod)
+  # --------------------------------------------------------------------------
+  prod:
+    container_name: backend-prod
+    build:
+      context: ../..
+      dockerfile: backend/docker/Dockerfile
+      target: prod
+    ports:
+      - "3000:3000"
+    environment:
+      # Override database connection for Docker network
+      POSTGRES_HOST: postgres
+      PG_PORT: 5432
+      NODE_ENV: production
+    env_file:
+      - ../.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

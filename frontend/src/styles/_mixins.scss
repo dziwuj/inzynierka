@@ -1,0 +1,7 @@
+@mixin themed-bg {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  transition:
+    background-color $transition-speed,
+    color $transition-speed;
+}

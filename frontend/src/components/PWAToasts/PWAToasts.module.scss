@@ -1,0 +1,50 @@
+.installPrompt {
+  text-align: left;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  width: 100%;
+
+  &Text {
+    max-width: 150px;
+  }
+
+  &Buttons {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    min-width: 100px;
+
+    button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      transition: background-color 0.2s ease;
+
+      &:first-of-type {
+        background-color: var(--color-primary);
+        color: var(--color-bg);
+      }
+
+      &:last-of-type {
+        background-color: var(--color-bg) r;
+        color: var(--color-primary);
+      }
+    }
+  }
+
+  @media (max-width: 480px) {
+    &Text {
+      align-self: center;
+      text-align: center;
+      max-width: none;
+      width: 100%;
+      margin-bottom: 16px;
+      font-size: 20px;
+    }
+  }
+}

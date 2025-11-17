@@ -1,66 +1,115 @@
-import { VitePWA } from 'vite-plugin-pwa'
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import '@babel/plugin-proposal-decorators'
-import mkcert from 'vite-plugin-mkcert'
+import react from "@vitejs/plugin-react";
+import fs from "node:fs";
+import path from "node:path";
+import process from "node:process";
+import { defineConfig, loadEnv } from "vite";
+import { VitePWA } from "vite-plugin-pwa";
+import svgr from "vite-plugin-svgr";
 
-// https://vitejs.dev/config/
-export default defineConfig({
-  base: './',
-  resolve: {
-    alias: {
-      '@': '/src',
+const selfDestroying = process.env.SW_DESTROY === "true";
+
+export default ({ mode }: { mode: string }) => {
+  process.env = { ...process.env, ...loadEnv(mode, process.cwd(), "") };
+
+  const isDevelopment = process.env.SW_DEV === "true";
+  const keyPath = path.resolve(__dirname, "src/certs/localhost-key.pem");
+  const certPath = path.resolve(__dirname, "src/certs/localhost.pem");
+  const certificatesExist = fs.existsSync(keyPath) && fs.existsSync(certPath);
+
+  return defineConfig({
+    build: {
+      sourcemap: process.env.SOURCE_MAP === "true",
     },
-  },
-  server: {
-    https: {
-      key: './cert.key',
-      cert: './cert.crt',
-    },
-  },
-  plugins: [
-    mkcert(),
-    react({
-      babel: {
-        plugins: [
-          [
-            '@babel/plugin-proposal-decorators',
+    plugins: [
+      react(),
+      svgr(),
+      VitePWA({
+        mode: "development",
+        base: "/",
+        srcDir: "src",
+        filename: "sw.ts",
+        strategies: "injectManifest",
+        registerType: "autoUpdate",
+        selfDestroying: selfDestroying,
+        manifest: {
+          name: "inzynierka",
+          short_name: "inzynierka",
+          description: "App for engeneering thesis",
+          theme_color: "#ffffff",
+          background_color: "#ffffff",
+          display: "standalone",
+          icons: [
             {
-              version: '2023-05',
+              src: "/Logo-64x64.png",
+              sizes: "64x64",
+              type: "image/png",
+            },
+            {
+              src: "/Logo-192x192.png",
+              sizes: "192x192",
+              type: "image/png",
+            },
+            {
+              src: "/Logo-512x512.png",
+              sizes: "512x512",
+              type: "image/png",
+              purpose: "any",
+            },
+            {
+              src: "/Logo-512x512.png",
+              sizes: "512x512",
+              type: "image/png",
+              purpose: "maskable",
             },
           ],
-        ],
+        },
+        workbox: {
+          globPatterns: ["**/*"],
+          clientsClaim: true,
+          skipWaiting: true,
+          cleanupOutdatedCaches: true,
+        },
+        includeAssets: ["**/*"],
+        devOptions: {
+          enabled: isDevelopment,
+          type: "module",
+          navigateFallback: "index.html",
+        },
+      }),
+    ],
+    server:
+      isDevelopment && certificatesExist
+        ? {
+            https: {
+              key: fs.readFileSync(keyPath),
+              cert: fs.readFileSync(certPath),
+            },
+            host: "0.0.0.0",
+            proxy: {
+              "/api": {
+                target: process.env.VITE_API_URL,
+                changeOrigin: true,
+                secure: false,
+              },
+            },
+          }
+        : {
+            host: "0.0.0.0",
+          },
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "src"),
+        "@components": path.resolve(__dirname, "src/components"),
+        "@hooks": path.resolve(__dirname, "src/hooks"),
+        "@styles": path.resolve(__dirname, "src/styles"),
+        "@assets": path.resolve(__dirname, "src/assets"),
+        "@stores": path.resolve(__dirname, "src/stores"),
+        "@pages": path.resolve(__dirname, "src/pages"),
+        "@api": path.resolve(__dirname, "src/api"),
+        "@constants": path.resolve(__dirname, "src/constants"),
+        "@utils": path.resolve(__dirname, "src/utils"),
+        "@routes": path.resolve(__dirname, "src/routes"),
       },
-    }),
-    VitePWA({
-      strategies: 'injectManifest',
-      srcDir: 'src',
-      filename: 'service-worker.ts',
-      registerType: 'autoUpdate',
-      injectRegister: false,
-
-      pwaAssets: {
-        disabled: false,
-        config: true,
-      },
-
-      manifest: {
-        name: 'inzynierka',
-        short_name: 'inzynierka',
-        description: 'inzynierka',
-        theme_color: '#ffffff',
-      },
-
-      injectManifest: {
-        globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
-      },
-
-      devOptions: {
-        enabled: true,
-        navigateFallback: 'index.html',
-        suppressWarnings: true,
-        type: 'module',
-      },
-    }),
-  ],
-})
+    },
+  });
+};

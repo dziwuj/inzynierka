@@ -1,0 +1,36 @@
+name: inzynierka-frontend
+services:
+  dev:
+    container_name: frontend-dev
+    build:
+      context: ../..
+      dockerfile: frontend/docker/Dockerfile
+      target: dev
+    env_file:
+      - ../.env.development
+    volumes:
+      - ../src:/workspace/frontend/src
+      - ../public:/workspace/frontend/public
+      - ../vite.config.ts:/workspace/frontend/vite.config.ts
+      - ../pwa-assets.config.ts:/workspace/frontend/pwa-assets.config.ts
+      - ../index.html:/workspace/frontend/index.html
+    ports:
+      - "5173:5173"
+    environment:
+      - NODE_ENV=development
+  prod:
+    container_name: frontend-prod
+    build:
+      context: ../..
+      dockerfile: frontend/docker/Dockerfile
+      target: prod
+    env_file:
+      - ../.env.production
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ../nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ../src/certs:/etc/nginx/certs:ro
+    environment:
+      - NODE_ENV=production
