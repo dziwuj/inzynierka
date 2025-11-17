@@ -1,6 +1,6 @@
-import { ITranslations } from '../../interfaces/languages'
+import { ITranslations } from "@/types/languages";
 export const translations: ITranslations = {
   HomeScreen: {
-    title: 'Ekran główny',
+    title: "Ekran główny",
   },
-}
+};

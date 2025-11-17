@@ -1,6 +1,6 @@
-import { ITranslations } from '../../interfaces/languages'
+import { ITranslations } from "@/types/languages";
 export const translations: ITranslations = {
   HomeScreen: {
-    title: 'Home Screen',
+    title: "Home Screen",
   },
-}
+};

@@ -5,7 +5,7 @@
 
     /* Modules */
     "module": "commonjs",
-    "rootDir": "./src",
+    "rootDir": "api",
 
     /* JavaScript Support */
     "allowJs": true,

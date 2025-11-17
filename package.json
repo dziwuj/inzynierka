@@ -11,12 +11,44 @@
     "backend"
   ],
   "devDependencies": {
-    "typescript": "~5.7.2",
-    "typescript-eslint": "^8.20.0",
-    "@types/node": "^22.13.8",
-    "prettier": "^3.5.3",
     "@eslint/js": "^9.18.0",
-    "eslint": "^9.18.0"
+    "@types/node": "^22.13.8",
+    "eslint": "^9.36.0",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^6.1.0",
+    "eslint-plugin-react-refresh": "^0.4.23",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "globals": "^16.4.0",
+    "husky": "^9.1.7",
+    "prettier": "^3.5.3",
+    "typescript": "~5.7.2",
+    "typescript-eslint": "^8.20.0"
   },
-  "scripts": {}
+  "scripts": {
+    "dev": "concurrently \"yarn dev:frontend\" \"yarn dev:backend\"",
+    "dev:frontend": "yarn workspace frontend dev",
+    "dev:backend": "yarn workspace backend dev",
+    "build": "yarn build:frontend && yarn build:backend",
+    "build:frontend": "yarn workspace frontend build",
+    "build:backend": "yarn workspace backend build",
+    "build:prod": "yarn build:prod:frontend && yarn build:prod:backend",
+    "build:prod:frontend": "yarn workspace frontend build:prod",
+    "build:prod:backend": "yarn workspace backend build:prod",
+    "start:backend": "yarn workspace backend start",
+    "start:prod:backend": "yarn workspace backend start:prod",
+    "preview:frontend": "yarn workspace frontend preview",
+    "docker:dev": "concurrently \"yarn workspace frontend docker:dev\" \"yarn workspace backend docker:dev\"",
+    "docker:prod": "concurrently \"yarn workspace frontend docker:prod\" \"yarn workspace backend docker:prod\"",
+    "docker:down": "yarn workspace frontend docker:down && yarn workspace backend docker:down",
+    "docker:rebuild": "yarn workspace frontend docker:rebuild && yarn workspace backend docker:rebuild",
+    "docker:clean": "yarn workspace backend docker:clean",
+    "db:start": "yarn workspace backend db:start",
+    "db:stop": "yarn workspace backend db:stop",
+    "lint": "yarn workspace frontend lint"
+  },
+  "dependencies": {
+    "concurrently": "^9.1.2"
+  }
 }
