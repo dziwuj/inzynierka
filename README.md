@@ -40,7 +40,19 @@
 inzynierka/
 ├── backend/                      # Backend server (Node.js/Express)
 │   ├── api/
-│   │   └── server.ts             # Server entry point
+│   │   ├── server.ts             # Express server with OpenAPI endpoints
+│   │   ├── config/
+│   │   │   └── database.ts       # PostgreSQL connection pool
+│   │   ├── middleware/
+│   │   │   └── validation.ts     # Zod validation middleware
+│   │   ├── schemas/
+│   │   │   └── index.ts          # Zod schemas with OpenAPI metadata
+│   │   ├── openapi/
+│   │   │   └── index.ts          # OpenAPI 3.0 document generator
+│   │   └── routes/
+│   │       ├── auth.ts           # Authentication endpoints
+│   │       ├── users.ts          # User CRUD endpoints
+│   │       └── models.ts         # Model CRUD endpoints
 │   ├── db/
 │   │   └── setup/                # Database initialization scripts
 │   │       ├── 00_init_users.sql # User initialization
@@ -56,7 +68,8 @@ inzynierka/
 │   │   └── docker-compose.yml    # Service orchestration
 │   ├── package.json
 │   ├── tsconfig.json
-│   └── .env                      # Backend configuration
+│   ├── .env                      # Backend configuration
+│   └── API.md                    # API documentation
 │
 ├── frontend/                     # Frontend PWA application
 │   ├── public/                   # Static assets
@@ -97,7 +110,10 @@ inzynierka/
 - **`frontend/src/utils/`** - Helper functions for crypto, storage, offline mode
 - **`frontend/src/api/`** - API client with typed requests/responses
 - **`frontend/src/certs/`** - SSL certificates for HTTPS in development
-- **`backend/api/`** - Backend server implementation
+- **`backend/api/`** - Backend server implementation with Zod validation
+- **`backend/api/schemas/`** - Zod schemas with OpenAPI metadata for type-safe validation
+- **`backend/api/routes/`** - Express routes (auth, users, models)
+- **`backend/api/openapi/`** - Auto-generated OpenAPI 3.0 documentation
 - **`backend/db/setup/`** - PostgreSQL initialization scripts (run in alphabetical order)
 - **`backend/docker/`** - Docker configuration for backend and database services
 
@@ -105,9 +121,13 @@ inzynierka/
 
 - **`frontend/src/sw.ts`** - Service Worker for PWA offline functionality
 - **`frontend/vite.config.ts`** - Build configuration with PWA plugin
-- **`backend/api/server.ts`** - Backend API server
+- **`backend/api/server.ts`** - Express server with OpenAPI documentation endpoints
+- **`backend/api/schemas/index.ts`** - Zod schemas for validation and OpenAPI generation
+- **`backend/api/middleware/validation.ts`** - Zod validation middleware
+- **`backend/api/config/database.ts`** - PostgreSQL connection pool
 - **`backend/db/setup/00_init_users.sql`** - Database user initialization (reads from .env)
 - **`backend/docker/docker-compose.yml`** - Service orchestration for backend, database, and development containers
+- **`backend/API.md`** - Detailed API documentation and development guide
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -222,9 +242,9 @@ VITE_VAPID_PUBLIC_KEY= <enter your VAPID PUBLIC KEY here> #key for push notifica
 Create a `.env` file in the **backend** directory and add the following variables:
 
 ```env
-NEXT_PUBLIC_VERCEL_ENV=development
-NEXT_PUBLIC_VERCEL_URL=${VERCEL_URL:-}
+# Server Configuration
 PORT=3000
+CORS_ORIGIN=https://localhost:5173
 
 # Database Owner (created by initialization script and used by application)
 DB_OWNER=your_db_user
@@ -239,7 +259,18 @@ DB_NAME=inzynierka
 PG_PORT=5433
 ```
 
-> **Note:** The `DB_OWNER` and `DB_OWNER_PASSWORD` are used to create the database user during PostgreSQL initialization and for application connections. The database runs on port 5433 (mapped from container's internal port 5432).
+**Key Configuration Notes:**
+
+- `DB_OWNER` and `DB_OWNER_PASSWORD` - Used to create the database user during PostgreSQL initialization and for application connections
+- `DB_PORT=5433` - External port (mapped from container's internal port 5432)
+- `CORS_ORIGIN` - Frontend URL for CORS policy
+
+**Backend Features:**
+
+- **Zod Validation**: All requests validated with type-safe Zod schemas
+- **OpenAPI 3.0**: Auto-generated documentation from Zod schemas
+- **Swagger UI**: Interactive API testing at `/api/docs/swagger`
+- **PostgreSQL**: Type-safe database queries with connection pooling
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -277,14 +308,24 @@ This will start:
 -To run only the frontend:
 
 ```bash
-  yarn dev:frontend
+yarn dev:frontend
 ```
 
 -To run only the backend:
 
 ```bash
-  yarn dev:backend
+yarn dev:backend
 ```
+
+#### API Documentation
+
+When the backend is running, you can access:
+
+- **Interactive Swagger UI**: [http://localhost:3000/api/docs/swagger](http://localhost:3000/api/docs/swagger)
+- **OpenAPI JSON**: [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
+- **Health Check**: [http://localhost:3000/health](http://localhost:3000/health)
+
+The API uses **Zod** for request/response validation and automatically generates **OpenAPI 3.0** documentation. See [backend/API.md](backend/API.md) for detailed API documentation.
 
 #### Database Management
 

@@ -15,10 +15,10 @@ services:
       POSTGRES_DB: ${DB_NAME:-inzynierka}
       DB_OWNER: ${DB_OWNER:-database_owner}
       DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:-your_db_password}
-      PG_PORT: ${PG_PORT:-5433}
+      PG_PORT: ${DB_PORT:-5433}
       PGOPTIONS: "-c env.db_owner=${DB_OWNER:-database_owner} -c env.db_owner_password=${DB_OWNER_PASSWORD:-your_db_password}"
     ports:
-      - "${PG_PORT:-5433}:5432"
+      - "${DB_PORT:-5433}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
