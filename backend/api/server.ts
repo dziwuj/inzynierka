@@ -14,7 +14,29 @@ const PORT = process.env.PORT || 3000;
 
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "https://localhost:5173",
+    origin: (origin, callback) => {
+      const allowedOrigins = (process.env.CORS_ORIGIN || "https://localhost:5173")
+        .split(",")
+        .map(o => o.trim());
+      
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin) return callback(null, true);
+      
+      // Check if origin matches any allowed pattern (supports wildcards)
+      const isAllowed = allowedOrigins.some(allowed => {
+        if (allowed.includes("*")) {
+          const pattern = new RegExp("^" + allowed.replace(/\*/g, ".*") + "$");
+          return pattern.test(origin);
+        }
+        return allowed === origin;
+      });
+      
+      if (isAllowed) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   }),
 );
