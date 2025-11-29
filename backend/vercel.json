@@ -1,21 +1,21 @@
 {
-    "version": 2,
-    "builds": [
-        {
-            "src": "api/index.ts",
-            "use": "@vercel/node"
-        }
-    ],
-    "routes": [
-        {
-            "src": "/",
-            "status": 308,
-            "headers": { "Location": "/api-docs" },
-            "continue": false
-        },
-        {
-            "src": "/(.*)",
-            "dest": "api/index.ts"
-        }
-    ]
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/index.ts",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/",
+      "status": 308,
+      "headers": { "Location": "/" },
+      "continue": false
+    },
+    {
+      "src": "/(.*)",
+      "dest": "api/index.ts"
+    }
+  ]
 }
