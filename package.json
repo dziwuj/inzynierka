@@ -1,6 +1,7 @@
 {
   "name": "inzynierka",
   "version": "1.0.0",
+  "type": "module",
   "main": "index.js",
   "repository": "https://github.com/dziwuj/inzynierka.git",
   "author": "dziwuj <sobeckizbyszko@gmail.com>",
