@@ -9,6 +9,12 @@
   --color-success: #{v.$light-success};
   --color-warning: #{v.$light-warning};
   --color-error: #{v.$light-error};
+
+  // Light button variant (reusable for OAuth, secondary actions, etc.)
+  --btn-light-bg: #ffffff;
+  --btn-light-bg-hover: #f8f9fa;
+  --btn-light-text: #3c4043;
+  --btn-light-border: #dadce0;
 }
 
 [data-theme="dark"] {
@@ -20,4 +26,10 @@
   --color-success: #{v.$dark-success};
   --color-warning: #{v.$dark-warning};
   --color-error: #{v.$dark-error};
+
+  // Light button variant (dark mode - maintains light appearance for contrast)
+  --btn-light-bg: #ffffff;
+  --btn-light-bg-hover: #f8f9fa;
+  --btn-light-text: #3c4043;
+  --btn-light-border: #dadce0;
 }

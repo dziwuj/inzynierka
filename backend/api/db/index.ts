@@ -1,7 +1,6 @@
 import { Pool, PoolConfig } from "pg";
 
 // Use connection string for Vercel (Neon), individual params for local Docker
-const isProduction = process.env.NODE_ENV === "production";
 const connectionString = process.env.DATABASE_URL;
 
 const config: PoolConfig = connectionString

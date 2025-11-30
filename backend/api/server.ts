@@ -1,5 +1,11 @@
+import "./config/passport"; // Initialize passport configuration
+
 import cors from "cors";
 import express from "express";
+import fs from "fs";
+import https from "https";
+import passport from "passport";
+import path from "path";
 
 import pool from "./db";
 import { generateOpenApiDocument } from "./openapi";
@@ -44,6 +50,7 @@ app.use(
 );
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
+app.use(passport.initialize());
 
 // ============================================================================
 // Health Check
@@ -127,25 +134,66 @@ app.get("/", (req, res) => {
 });
 
 // ============================================================================
+// 404 Handler
+// ============================================================================
+
+app.use((req: express.Request, res: express.Response) => {
+  res.status(404).json({
+    error: "Not found",
+    message: `Route ${req.method} ${req.path} not found`,
+  });
+});
+
+// ============================================================================
 // Error Handler
 // ============================================================================
 
-app.use((err: Error, req: express.Request, res: express.Response) => {
-  console.error("Error:", err);
-  res.status(500).json({
-    error: "Internal server error",
-    message: err.message,
-  });
-});
+app.use(
+  (
+    err: Error,
+    req: express.Request,
+    res: express.Response,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    next: express.NextFunction,
+  ) => {
+    console.error("Error:", err);
+    res.status(500).json({
+      error: "Internal server error",
+      message: err.message,
+    });
+  },
+);
 
 // ============================================================================
 // Start Server
 // ============================================================================
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(
-    `📚 API Documentation: http://localhost:${PORT}/api/docs/swagger`,
-  );
-  console.log(`🏥 Health check: http://localhost:${PORT}/health`);
-});
+// Check for SSL certificates (shared certs directory)
+const certPath = path.resolve(__dirname, "../../certs/localhost.pem");
+const keyPath = path.resolve(__dirname, "../../certs/localhost-key.pem");
+const useHttps = fs.existsSync(certPath) && fs.existsSync(keyPath);
+
+if (useHttps) {
+  const httpsOptions = {
+    key: fs.readFileSync(keyPath),
+    cert: fs.readFileSync(certPath),
+  };
+
+  https.createServer(httpsOptions, app).listen(PORT, () => {
+    console.log(`🔒 Server running on https://localhost:${PORT}`);
+    console.log(
+      `📚 API Documentation: https://localhost:${PORT}/api/docs/swagger`,
+    );
+    console.log(`🏥 Health check: https://localhost:${PORT}/health`);
+  });
+} else {
+  app.listen(PORT, () => {
+    console.log(
+      `⚠️  Server running on http://localhost:${PORT} (no SSL certificates found)`,
+    );
+    console.log(
+      `📚 API Documentation: http://localhost:${PORT}/api/docs/swagger`,
+    );
+    console.log(`🏥 Health check: http://localhost:${PORT}/health`);
+  });
+}

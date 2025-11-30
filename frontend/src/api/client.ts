@@ -57,22 +57,23 @@ class ApiClient {
     try {
       const response = await fetch(`${this.baseUrl}${endpoint}`, config);
 
-      if (response.status === 401 && !skipAuth) {
-        const refreshed = await rootStore.authStore.refresh();
-        if (refreshed) {
-          return this.request<ResponseType, BodyType>(
-            endpoint,
-            method,
-            options,
-          );
-        }
-      }
-
       const data = (await response.json()) as ResponseType | ErrorResponse;
 
       if (!response.ok) {
+        // Only try to refresh token if we got a 401 on an authenticated request
+        if (response.status === 401 && !skipAuth) {
+          const refreshed = await rootStore.authStore.refresh();
+          if (refreshed) {
+            return this.request<ResponseType, BodyType>(
+              endpoint,
+              method,
+              options,
+            );
+          }
+        }
+
         throw new Error(
-          `API Error: ${(data as ErrorResponse).message || response.statusText}`,
+          `API Error: ${(data as ErrorResponse).error || (data as ErrorResponse).message || response.statusText}`,
         );
       }
 

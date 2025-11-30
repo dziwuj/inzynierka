@@ -2,16 +2,32 @@
 -- USERS & AUTHENTICATION
 -- ============================================================================
 
+CREATE TABLE IF NOT EXISTS pending_registrations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    username TEXT NOT NULL,
+    email TEXT NOT NULL,
+    password_hash TEXT NOT NULL,
+    full_name TEXT,
+    verification_token TEXT NOT NULL UNIQUE,
+    verification_expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_pending_email UNIQUE(email),
+    CONSTRAINT unique_pending_username UNIQUE(username)
+);
+
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
     email TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     username TEXT UNIQUE NOT NULL,
-    display_name TEXT,
+    full_name TEXT,
     avatar BYTEA,
     avatar_type image_mime_type,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+    email_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    email_verification_token TEXT,
+    email_verification_expires_at TIMESTAMPTZ,
     last_login_at TIMESTAMPTZ,
     password_reset_token TEXT,
     password_reset_expires_at TIMESTAMPTZ,
