@@ -3,6 +3,19 @@
 -- ============================================================================
 
 -- ============================================================
+-- PENDING REGISTRATIONS CLEANUP FUNCTION
+-- Auto-cleanup expired pending registrations (older than 24 hours)
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION cleanup_expired_pending_registrations()
+RETURNS void AS $$
+BEGIN
+    DELETE FROM pending_registrations
+    WHERE verification_expires_at < NOW();
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================
 -- SESSION HISTORY TRIGGER
 -- Records session lifecycle events to session_history hypertable
 -- ============================================================

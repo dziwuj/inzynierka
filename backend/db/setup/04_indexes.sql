@@ -2,6 +2,13 @@
 -- SESSION & AUTH INDEXES
 -- ============================================================================
 
+-- Pending registrations indexes
+CREATE INDEX IF NOT EXISTS idx_pending_registrations_token 
+    ON pending_registrations(verification_token);
+
+CREATE INDEX IF NOT EXISTS idx_pending_registrations_expires 
+    ON pending_registrations(verification_expires_at);
+
 CREATE INDEX login_attempts_user_attempt_desc_idx 
     ON login_attempts (user_id, attempt_at DESC);
 	

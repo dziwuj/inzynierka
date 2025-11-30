@@ -12,8 +12,8 @@ export default ({ mode }: { mode: string }) => {
   process.env = { ...process.env, ...loadEnv(mode, process.cwd(), "") };
 
   const isDevelopment = process.env.SW_DEV === "true";
-  const keyPath = path.resolve(__dirname, "src/certs/localhost-key.pem");
-  const certPath = path.resolve(__dirname, "src/certs/localhost.pem");
+  const keyPath = path.resolve(__dirname, "../certs/localhost-key.pem");
+  const certPath = path.resolve(__dirname, "../certs/localhost.pem");
   const certificatesExist = fs.existsSync(keyPath) && fs.existsSync(certPath);
 
   return defineConfig({
@@ -32,8 +32,8 @@ export default ({ mode }: { mode: string }) => {
         registerType: "autoUpdate",
         selfDestroying: selfDestroying,
         manifest: {
-          name: "inzynierka",
-          short_name: "inzynierka",
+          name: "3D Model Viewer",
+          short_name: "3D Model Viewer",
           description: "App for engeneering thesis",
           theme_color: "#ffffff",
           background_color: "#ffffff",

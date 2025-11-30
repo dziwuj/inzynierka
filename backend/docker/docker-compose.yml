@@ -40,12 +40,13 @@ services:
     volumes:
       - ../api:/workspace/backend/api
       - ../tsconfig.json:/workspace/backend/tsconfig.json
+      - ../../certs:/workspace/certs:ro
     ports:
       - "3000:3000"
     environment:
       # Override database connection for Docker network
-      POSTGRES_HOST: postgres
-      PG_PORT: 5432
+      DB_HOST: postgres
+      DB_PORT: 5432
       NODE_ENV: development
     env_file:
       - ../.env
@@ -62,12 +63,14 @@ services:
       context: ../..
       dockerfile: backend/docker/Dockerfile
       target: prod
+    volumes:
+      - ../../certs:/workspace/certs:ro
     ports:
       - "3000:3000"
     environment:
       # Override database connection for Docker network
-      POSTGRES_HOST: postgres
-      PG_PORT: 5432
+      DB_HOST: postgres
+      DB_PORT: 5432
       NODE_ENV: production
     env_file:
       - ../.env
