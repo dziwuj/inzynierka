@@ -15,7 +15,7 @@ export const Login: FC = () => {
   const { error, loading, setError, login, loginWithGoogle, useOfflineMode } =
     useAuth();
 
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
   // Handle OAuth callback
@@ -45,7 +45,7 @@ export const Login: FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await login({
-      username: email,
+      username,
       password,
     });
   };
@@ -59,15 +59,15 @@ export const Login: FC = () => {
           {error && <div className={styles.error}>{error}</div>}
 
           <div className={styles.inputGroup}>
-            <label htmlFor="email">Email</label>
+            <label htmlFor="username">Username</label>
             <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
+              id="username"
+              type="text"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
               required
-              placeholder="your@email.com"
-              autoComplete="email"
+              placeholder="Enter your username"
+              autoComplete="username"
             />
           </div>
 

@@ -7,7 +7,13 @@ const SMTP_USER = process.env.SMTP_USER;
 const SMTP_PASSWORD = process.env.SMTP_PASSWORD;
 const SMTP_FROM_EMAIL = process.env.SMTP_FROM_EMAIL || SMTP_USER;
 const SMTP_FROM_NAME = process.env.SMTP_FROM_NAME || "3D Model Viewer";
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+
+// Auto-detect frontend URL: use FRONTEND_URL if set, otherwise construct from VERCEL_URL
+const FRONTEND_URL =
+  process.env.FRONTEND_URL ||
+  (process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "https://localhost:5173");
 
 // Create nodemailer transporter
 const transporter = nodemailer.createTransport({
