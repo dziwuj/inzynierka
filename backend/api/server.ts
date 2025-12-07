@@ -22,7 +22,7 @@ app.use(
   cors({
     origin: (origin, callback) => {
       const allowedOrigins = (
-        process.env.CORS_ORIGIN || "https://localhost:5173"
+        process.env.FRONTEND_URL || "https://localhost:5173"
       )
         .split(",")
         .map(o => o.trim());

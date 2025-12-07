@@ -5,7 +5,12 @@ import pool from "../db";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";
+
+// On Vercel, use VERCEL_URL (automatically provided) with https://
+// In local dev, use BACKEND_URL from .env
+const BACKEND_URL = process.env.VERCEL_URL
+  ? `https://${process.env.VERCEL_URL}`
+  : process.env.BACKEND_URL || "https://localhost:3000";
 
 if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
   console.warn(
