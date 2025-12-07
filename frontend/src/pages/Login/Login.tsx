@@ -67,6 +67,7 @@ export const Login: FC = () => {
               onChange={e => setEmail(e.target.value)}
               required
               placeholder="your@email.com"
+              autoComplete="email"
             />
           </div>
 
@@ -80,6 +81,7 @@ export const Login: FC = () => {
               required
               minLength={8}
               placeholder="••••••••"
+              autoComplete="current-password"
             />
           </div>
 

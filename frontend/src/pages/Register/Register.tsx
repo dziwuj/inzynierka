@@ -99,6 +99,7 @@ export const Register: FC = () => {
               required
               minLength={3}
               placeholder="Choose a username"
+              autoComplete="username"
             />
           </div>
 
@@ -111,6 +112,7 @@ export const Register: FC = () => {
               onChange={e => setEmail(e.target.value)}
               required
               placeholder="your@email.com"
+              autoComplete="email"
             />
           </div>
 
@@ -122,6 +124,7 @@ export const Register: FC = () => {
               value={fullName}
               onChange={e => setFullName(e.target.value)}
               placeholder="Your full name"
+              autoComplete="name"
             />
           </div>
 
@@ -135,6 +138,7 @@ export const Register: FC = () => {
               required
               minLength={8}
               placeholder="At least 8 characters"
+              autoComplete="new-password"
             />
           </div>
 
@@ -148,6 +152,7 @@ export const Register: FC = () => {
               required
               minLength={8}
               placeholder="Re-enter your password"
+              autoComplete="new-password"
             />
           </div>
 
