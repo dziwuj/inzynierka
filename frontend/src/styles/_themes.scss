@@ -10,11 +10,34 @@
   --color-warning: #{v.$light-warning};
   --color-error: #{v.$light-error};
 
+  // Grayscale palette for clean UI
+  --color-gray-50: #f8f9fa;
+  --color-gray-100: #f1f3f5;
+  --color-gray-200: #e9ecef;
+  --color-gray-300: #dee2e6;
+  --color-gray-400: #ced4da;
+  --color-gray-500: #adb5bd;
+  --color-gray-600: #6c757d;
+  --color-gray-700: #495057;
+  --color-gray-800: #343a40;
+  --color-gray-900: #212529;
+
+  // Surface colors
+  --color-surface: #ffffff;
+  --color-surface-hover: #f8f9fa;
+  --color-border: #e9ecef;
+  --color-border-strong: #dee2e6;
+
+  // Text colors
+  --color-text-primary: #212529;
+  --color-text-secondary: #6c757d;
+  --color-text-muted: #adb5bd;
+
   // Light button variant (reusable for OAuth, secondary actions, etc.)
   --btn-light-bg: #ffffff;
   --btn-light-bg-hover: #f8f9fa;
-  --btn-light-text: #3c4043;
-  --btn-light-border: #dadce0;
+  --btn-light-text: #495057;
+  --btn-light-border: #dee2e6;
 }
 
 [data-theme="dark"] {
@@ -27,9 +50,32 @@
   --color-warning: #{v.$dark-warning};
   --color-error: #{v.$dark-error};
 
-  // Light button variant (dark mode - maintains light appearance for contrast)
-  --btn-light-bg: #ffffff;
-  --btn-light-bg-hover: #f8f9fa;
-  --btn-light-text: #3c4043;
-  --btn-light-border: #dadce0;
+  // Grayscale palette for dark mode
+  --color-gray-50: #212529;
+  --color-gray-100: #2c3136;
+  --color-gray-200: #373b40;
+  --color-gray-300: #495057;
+  --color-gray-400: #6c757d;
+  --color-gray-500: #adb5bd;
+  --color-gray-600: #ced4da;
+  --color-gray-700: #dee2e6;
+  --color-gray-800: #e9ecef;
+  --color-gray-900: #f8f9fa;
+
+  // Surface colors
+  --color-surface: #1a1d21;
+  --color-surface-hover: #212529;
+  --color-border: #373b40;
+  --color-border-strong: #495057;
+
+  // Text colors
+  --color-text-primary: #f8f9fa;
+  --color-text-secondary: #adb5bd;
+  --color-text-muted: #6c757d;
+
+  // Light button variant (dark mode - adjusted for dark theme)
+  --btn-light-bg: #2c3136;
+  --btn-light-bg-hover: #373b40;
+  --btn-light-text: #e9ecef;
+  --btn-light-border: #495057;
 }

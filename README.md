@@ -81,26 +81,57 @@ inzynierka/
 │   │   ├── sw.ts                 # Service Worker configuration
 │   │   │
 │   │   ├── api/                  # API client layer
-│   │   ├── assets/               # Static resources (fonts, icons, images)
+│   │   │   ├── client.ts         # HTTP client with auth & error handling
+│   │   │   └── auth.ts           # Authentication API endpoints
+│   │   ├── assets/               # Static resources
+│   │   │   └── fonts/            # Self-hosted fonts (Red Hat Display, Montserrat)
 │   │   ├── components/           # React components
+│   │   │   ├── Button/           # Button component with variants
+│   │   │   ├── CustomBox/        # Custom box component
+│   │   │   ├── PWAToasts/        # PWA notification toasts
+│   │   │   └── ReloadToast/      # Service worker reload prompt
 │   │   ├── constants/            # App-wide constants
+│   │   │   ├── envs.ts           # Environment variable validation
+│   │   │   └── languages/        # i18n translations (en, pl)
 │   │   ├── hooks/                # Custom React hooks
+│   │   │   └── useAuth.ts        # Authentication hook (login, register, offline mode)
 │   │   ├── pages/                # Route pages/views
-│   │   │   ├── Login/            # Login page
+│   │   │   ├── Login/            # Login page (split design with offline section)
 │   │   │   ├── Register/         # Registration page
 │   │   │   ├── VerifyEmail/      # Email verification page
-│   │   │   └── Home/             # Home page
+│   │   │   ├── Home/             # Home page
+│   │   │   └── NotFound/         # 404 page
 │   │   ├── routes/               # Routing configuration
+│   │   │   ├── AppRouter.tsx     # Main router with route definitions
+│   │   │   └── ProtectedRoute.tsx # Auth guard (supports offline mode)
 │   │   ├── stores/               # MobX state management
+│   │   │   ├── Auth.store.tsx    # Authentication state (token, user, offline mode)
+│   │   │   ├── Ui.store.tsx      # UI state
+│   │   │   ├── Translations.store.tsx # i18n state
+│   │   │   ├── Root.store.tsx    # Root store
+│   │   │   └── useStores.ts      # Store hooks
 │   │   ├── styles/               # Global styles & custom theme
+│   │   │   ├── index.scss        # Global styles with Red Hat Display font
+│   │   │   ├── _variables.scss   # Color variables (light/dark themes)
+│   │   │   ├── _themes.scss      # CSS custom properties & grayscale palette
+│   │   │   └── _mixins.scss      # SCSS mixins
 │   │   ├── types/                # TypeScript type definitions
+│   │   │   ├── globals.d.ts      # Global type declarations
+│   │   │   ├── languages.ts      # i18n types
+│   │   │   └── SWNotifications.ts # Service worker notification types
 │   │   └── utils/                # Utility functions
+│   │       ├── index.ts          # Utility exports
+│   │       └── urlBase64ToUint8Array.ts # Push notification utility
 │   │
+│   ├── docker/
+│   │   └── docker-compose.yml    # Frontend Docker configuration
 │   ├── index.html                # HTML entry point
 │   ├── package.json              # Dependencies & scripts
 │   ├── tsconfig.json             # TypeScript configuration
-│   ├── vite.config.ts            # Vite build & PWA configuration
-│   └── pwa-assets.config.ts      # PWA asset generation
+│   ├── vite.config.ts            # Vite build & PWA configuration (with HMR for Docker)
+│   ├── pwa-assets.config.ts      # PWA asset generation
+│   ├── .env.development          # Development environment variables
+│   └── .env.production           # Production environment variables
 │
 ├── certs/                        # SSL certificates (shared by frontend and backend)
 │   ├── localhost.pem             # SSL certificate
@@ -129,13 +160,18 @@ inzynierka/
 **Important Files:**
 
 - **`frontend/src/sw.ts`** - Service Worker for PWA offline functionality
-- **`frontend/vite.config.ts`** - Build configuration with PWA plugin
-- **`backend/api/server.ts`** - Express server with OpenAPI documentation endpoints
+- **`frontend/vite.config.ts`** - Build configuration with PWA plugin and HMR for Docker (file polling enabled)
+- **`frontend/src/styles/index.scss`** - Global styles with Red Hat Display font (@font-face declarations)
+- **`frontend/src/styles/_themes.scss`** - CSS custom properties with grayscale palette for clean UI design
+- **`frontend/src/routes/ProtectedRoute.tsx`** - Auth guard supporting both authenticated and offline modes
+- **`backend/api/server.ts`** - Express server with HTTPS support and OpenAPI documentation endpoints
 - **`backend/api/schemas/index.ts`** - Zod schemas for validation and OpenAPI generation
 - **`backend/api/middleware/validation.ts`** - Zod validation middleware
-- **`backend/api/config/database.ts`** - PostgreSQL connection pool
-- **`backend/db/setup/00_init_users.sql`** - Database user initialization (reads from .env)
-- **`backend/docker/docker-compose.yml`** - Service orchestration for backend, database, and development containers
+- **`backend/api/config/passport.ts`** - Passport.js Google OAuth configuration (prioritizes BACKEND_URL)
+- **`backend/api/utils/email.ts`** - Email verification with nodemailer (auto-detects FRONTEND_URL from VERCEL_URL)
+- **`backend/api/config/database.ts`** - PostgreSQL connection pool (supports DATABASE_URL or individual params)
+- **`backend/db/setup/03_schema.sql`** - Database schema with `pending_registrations` table for email verification flow
+- **`backend/docker/docker-compose.yml`** - Service orchestration with PostgreSQL healthcheck
 - **`backend/API.md`** - Detailed API documentation and development guide
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -227,23 +263,33 @@ To run the app in Docker (_*recommended*_), you need to have Docker installed on
 Create a `.env.development` file in the **frontend** directory and add the following variables:
 
 ```env
-SW=true           #is the service worker enabled
-SW_DEV=true       #is the service worker in development mode
-SW_DESTROY=false   #should the service worker be destroyed on reload
-SOURCE_MAP=false  #should the source map be generated
-VITE_API_URL=https://localhost:3000/api  #API URL (backend uses HTTPS in development)
-VITE_VAPID_PUBLIC_KEY= <enter your VAPID PUBLIC KEY here> #key for push notifications
+# Service Worker Configuration
+SW=true                          # Enable service worker
+SW_DEV=true                      # Enable service worker in development mode
+SW_DESTROY=false                 # Should service worker be destroyed on reload
+SOURCE_MAP=false                 # Generate source maps (false for faster dev builds)
+
+# API Configuration
+VITE_API_URL=https://localhost:3000/api  # Backend API URL (uses HTTPS in development)
+
+# Push Notifications
+VITE_VAPID_PUBLIC_KEY=BFJPsiDQQ19a9V9EDeS9bDfwlDkb4gw9Z7_gnwU04bguJU-NdyCc2Xqr42QpfinAHhlt68v2VRs4viTgljK7vqk
 ```
 
 For `.env.production` in the **frontend** directory:
 
 ```env
-SW=true           #is the service worker enabled
-SW_DEV=false       #is the service worker in development mode
-SW_DESTROY=false   #should the service worker be destroyed on reload
-SOURCE_MAP=true  #should the source map be generated
-VITE_API_URL= <enter your API URL here> #API URL (default server uses http://localhost:3000/api)
-VITE_VAPID_PUBLIC_KEY= <enter your VAPID PUBLIC KEY here> #key for push notifications
+# Service Worker Configuration
+SW=true                          # Enable service worker
+SW_DEV=false                     # Disable service worker dev mode in production
+SW_DESTROY=false                 # Should service worker be destroyed on reload
+SOURCE_MAP=true                  # Generate source maps for production debugging
+
+# API Configuration
+VITE_API_URL=https://your-backend-url.vercel.app/api  # Replace with your production backend URL
+
+# Push Notifications
+VITE_VAPID_PUBLIC_KEY=BFJPsiDQQ19a9V9EDeS9bDfwlDkb4gw9Z7_gnwU04bguJU-NdyCc2Xqr42QpfinAHhlt68v2VRs4viTgljK7vqk
 ```
 
 #### Backend Environment
@@ -251,64 +297,82 @@ VITE_VAPID_PUBLIC_KEY= <enter your VAPID PUBLIC KEY here> #key for push notifica
 Create a `.env` file in the **backend** directory and add the following variables:
 
 ```env
+# Vercel Environment Variables (auto-injected in production)
+NEXT_PUBLIC_VERCEL_ENV=development
+NEXT_PUBLIC_VERCEL_URL=${VERCEL_URL:-}
+
 # Server Configuration
 PORT=3000
 
 # Database Connection - Local (Docker)
 DB_HOST=localhost
-DB_PORT=5433
-DB_NAME=your_database_name
-DB_OWNER=your_db_user
-DB_OWNER_PASSWORD=your_db_password
+DB_PORT=5433                     # External port (Docker maps to internal 5432)
+DB_NAME=your_database_name            # Note: Database name includes "_db" suffix
+DB_OWNER=your_db_user        # Database owner username
+DB_OWNER_PASSWORD=your_db_password       # Change in production!
 
-# Database Connection - Production (Neon) - Set this in Vercel
+# Database Connection - Production (Neon) - Uncomment and configure for production
 # Use direct (non-pooled) endpoint to support all connection parameters
-# DATABASE_URL=postgresql://user:password@host.neon.tech:5432/dbname?sslmode=require
+# DATABASE_URL=postgresql://your_db_user:password@your-db-host.cloud.provider.com:5432/your_database_name?sslmode=require
 
 # JWT Configuration
-JWT_SECRET=your-secret-key-change-in-production
-JWT_EXPIRES_IN=7d
+JWT_SECRET=your-secret-key-change-in-production  # CRITICAL: Change this in production!
+JWT_EXPIRES_IN=7d                                # Token expiration time
 
-# CORS and URL Configuration
-CORS_ORIGIN=https://localhost:5173
-BACKEND_URL=https://localhost:3000
-FRONTEND_URL=https://localhost:5173
+# URL Configuration
+FRONTEND_URL=https://localhost:5173              # Frontend URL for email verification links
+BACKEND_URL=https://localhost:3000               # Backend URL for OAuth callbacks
 
 # Email Configuration (SMTP) - for email verification
 # For Gmail: Use App Password (not regular password)
 # Enable 2FA and create app password at: https://myaccount.google.com/apppasswords
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASSWORD=your-gmail-app-password
-SMTP_FROM_EMAIL=noreply@yourapp.com
-SMTP_FROM_NAME=Your App Name
+SMTP_USER=3dmodelviewerapp@gmail.com            # Your Gmail address
+SMTP_PASSWORD=your-gmail-app-password                   # Gmail App Password (16 characters)
+SMTP_FROM_EMAIL=noreply@3dmodelviewer.app       # "From" email address
+SMTP_FROM_NAME=3D Model Viewer Team              # "From" display name
 
 # Google OAuth Configuration (optional)
 # Get credentials from: https://console.cloud.google.com/apis/credentials
+# Configure callback URL: https://your-backend-url.vercel.app/api/auth/google/callback
 GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 ```
 
 **Key Configuration Notes:**
 
-- `BACKEND_URL` and `FRONTEND_URL` - Use **HTTPS** in development (both services support SSL)
-- `DB_NAME=your_database_name` - Database name (not just `inzynierka`)
-- `DB_PORT=5433` - External port (mapped from container's internal port 5432)
-- `SMTP_PASSWORD` - For Gmail, use an App Password (not your regular Gmail password)
-- `DATABASE_URL` - Uncomment for production deployments (Neon, Vercel, etc.)
+- `BACKEND_URL` and `FRONTEND_URL` - Use **HTTPS** in development (both services support SSL with self-signed certificates)
+- `DB_NAME=your_database_name` - Database name includes "\_db" suffix (not just `inzynierka`)
+- `DB_PORT=5433` - External port (Docker maps to internal port 5432)
+- `SMTP_PASSWORD` - For Gmail, use an **App Password** (16 characters), not your regular Gmail password
+  - Enable 2FA on your Google account first
+  - Generate App Password at: https://myaccount.google.com/apppasswords
+- `DATABASE_URL` - Uncomment and configure for production deployments (Neon, Vercel, etc.)
+- `JWT_SECRET` - **CRITICAL**: Change this to a secure random string in production
+- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` - Optional, only needed if using Google OAuth
+  - Configure OAuth callback URL: `https://your-backend-url/api/auth/google/callback`
 - SSL certificates in `certs/` directory are shared by both frontend and backend
+- In production (Vercel), set `BACKEND_URL` explicitly to avoid OAuth redirect issues
 
 **Backend Features:**
 
-- **HTTPS Support**: Automatic HTTPS in development when certificates are present
-- **Email Verification**: Registration requires email verification (uses nodemailer)
+- **HTTPS Support**: Automatic HTTPS in development when certificates are present in `certs/` directory
+- **Email Verification**: Registration requires email verification with 24-hour token expiry
+  - Uses nodemailer with Gmail SMTP (or any SMTP provider)
+  - Pending registrations stored in separate table until verified
+  - Automatic cleanup of expired verification tokens
 - **Google OAuth**: Optional social login with Passport.js
-- **Zod Validation**: All requests validated with type-safe Zod schemas
+  - OAuth users have empty `password_hash` in database
+  - Seamless integration with email/password authentication
+- **Username-based Login**: Users log in with username (not email) and password
+- **Zod Validation**: All API requests/responses validated with type-safe Zod schemas
 - **OpenAPI 3.0**: Auto-generated documentation from Zod schemas
 - **Swagger UI**: Interactive API testing at `/api/docs/swagger`
-- **PostgreSQL**: Type-safe database queries with connection pooling
-- **Pending Registrations**: Users stored in separate table until email verified
+- **PostgreSQL 17**: TimescaleDB with UUID v7 support (pg_uuidv7 extension)
+- **User Profiles**: Username-based authentication system
+- **Connection Pooling**: Efficient database connection management with `pg` pool
+- **Hot Module Reload (HMR)**: File watching with polling for Docker environments
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -339,7 +403,7 @@ GOOGLE_CLIENT_SECRET=your-google-client-secret
 This will start:
 
 - **Frontend** at [https://localhost:5173](https://localhost:5173)
-- **Backend** at [http://localhost:3000](http://localhost:3000)
+- **Backend** at [https://localhost:3000](https://localhost:3000) (HTTPS enabled with self-signed certificates)
 
 #### Run Services Individually
 

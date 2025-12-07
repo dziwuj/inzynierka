@@ -4,7 +4,11 @@ import { Navigate, Outlet } from "react-router-dom";
 
 export const ProtectedRoute = observer(() => {
   const { authStore } = useStores();
-  const { isAuthenticated } = authStore;
+  const { isAuthenticated, isOfflineMode } = authStore;
 
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
+  return isAuthenticated || isOfflineMode ? (
+    <Outlet />
+  ) : (
+    <Navigate to="/login" replace />
+  );
 });

@@ -42,7 +42,7 @@ passport.use(
 
         // Check if user exists
         let result = await pool.query(
-          "SELECT id, username, email, full_name, is_admin, email_verified FROM users WHERE email = $1",
+          "SELECT id, username, email, is_admin, email_verified FROM users WHERE email = $1",
           [email],
         );
 
@@ -60,14 +60,13 @@ passport.use(
           const username = email.split("@")[0] + "_" + Date.now().toString(36);
 
           result = await pool.query(
-            `INSERT INTO users (username, email, password_hash, full_name, email_verified) 
-             VALUES ($1, $2, $3, $4, $5) 
-             RETURNING id, username, email, full_name, is_admin, email_verified`,
+            `INSERT INTO users (username, email, password_hash, email_verified) 
+             VALUES ($1, $2, $3, $4) 
+             RETURNING id, username, email, is_admin, email_verified`,
             [
               username,
               email,
               "", // Empty password hash for OAuth users
-              displayName || null,
               true, // Google users are pre-verified
             ],
           );
@@ -93,7 +92,7 @@ passport.serializeUser((user: any, done) => {
 passport.deserializeUser(async (id: string, done) => {
   try {
     const result = await pool.query(
-      "SELECT id, username, email, full_name, is_admin, email_verified FROM users WHERE id = $1",
+      "SELECT id, username, email, is_admin, email_verified FROM users WHERE id = $1",
       [id],
     );
 

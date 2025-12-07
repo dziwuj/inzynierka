@@ -35,10 +35,6 @@ export const UserSchema = z
       example: "john_doe",
     }),
     email: EmailSchema,
-    full_name: z.string().max(255).nullable().openapi({
-      description: "User full name",
-      example: "John Doe",
-    }),
     is_admin: z.boolean().default(false).openapi({
       description: "Admin privileges flag",
     }),
@@ -58,10 +54,6 @@ export const CreateUserSchema = z
       description: "User password (min 8 characters)",
       example: "securePassword123",
     }),
-    full_name: z.string().max(255).optional().openapi({
-      description: "User full name",
-      example: "John Doe",
-    }),
   })
   .openapi("CreateUser");
 
@@ -69,7 +61,6 @@ export const UpdateUserSchema = z
   .object({
     username: z.string().min(3).max(50).optional(),
     email: EmailSchema.optional(),
-    full_name: z.string().max(255).nullable().optional(),
     is_admin: z.boolean().optional(),
   })
   .openapi("UpdateUser");

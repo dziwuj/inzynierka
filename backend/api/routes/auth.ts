@@ -37,7 +37,7 @@ router.post(
   ),
   async (req: Request, res: Response) => {
     try {
-      const { username, email, password, full_name } = req.body;
+      const { username, email, password } = req.body;
 
       // Clean up expired pending registrations
       await pool.query("SELECT cleanup_expired_pending_registrations()");
@@ -98,14 +98,13 @@ router.post(
 
       // Store in pending_registrations table instead of users table
       const insertResult = await pool.query(
-        `INSERT INTO pending_registrations (username, email, password_hash, full_name, verification_token, verification_expires_at) 
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO pending_registrations (username, email, password_hash, verification_token, verification_expires_at) 
+         VALUES ($1, $2, $3, $4, $5)
          RETURNING id`,
         [
           username,
           email,
           hashedPassword,
-          full_name || null,
           verificationToken,
           verificationExpiresAt,
         ],
@@ -154,7 +153,7 @@ router.post(
       const { username, password } = req.body;
 
       const result = await pool.query(
-        `SELECT id, username, email, password_hash, full_name, is_admin, email_verified, created_at, updated_at 
+        `SELECT id, username, email, password_hash, is_admin, email_verified, created_at, updated_at 
          FROM users 
          WHERE username = $1 OR email = $1`,
         [username],
@@ -257,7 +256,7 @@ router.get("/verify-email", async (req: Request, res: Response) => {
 
     // Find pending registration with this token
     const pendingResult = await pool.query(
-      `SELECT id, username, email, password_hash, full_name, verification_expires_at 
+      `SELECT id, username, email, password_hash, verification_expires_at 
        FROM pending_registrations 
        WHERE verification_token = $1`,
       [token],
@@ -322,14 +321,9 @@ router.get("/verify-email", async (req: Request, res: Response) => {
 
     // Create the actual user account
     await pool.query(
-      `INSERT INTO users (username, email, password_hash, full_name, email_verified) 
-       VALUES ($1, $2, $3, $4, TRUE)`,
-      [
-        pending.username,
-        pending.email,
-        pending.password_hash,
-        pending.full_name,
-      ],
+      `INSERT INTO users (username, email, password_hash, email_verified) 
+       VALUES ($1, $2, $3, TRUE)`,
+      [pending.username, pending.email, pending.password_hash],
     );
 
     // Delete from pending_registrations

@@ -85,6 +85,18 @@ export default ({ mode }: { mode: string }) => {
               cert: fs.readFileSync(certPath),
             },
             host: "0.0.0.0",
+            port: 5173,
+            strictPort: true,
+            watch: {
+              usePolling: true,
+              interval: 100,
+            },
+            hmr: {
+              protocol: "wss",
+              host: "localhost",
+              port: 5173,
+              clientPort: 5173,
+            },
             proxy: {
               "/api": {
                 target: process.env.VITE_API_URL,
@@ -95,6 +107,16 @@ export default ({ mode }: { mode: string }) => {
           }
         : {
             host: "0.0.0.0",
+            port: 5173,
+            strictPort: true,
+            watch: {
+              usePolling: true,
+              interval: 100,
+            },
+            hmr: {
+              host: "localhost",
+              port: 5173,
+            },
           },
     resolve: {
       alias: {

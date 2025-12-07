@@ -24,7 +24,7 @@ router.get("/", async (req: Request, res: Response) => {
 
     const [dataResult, countResult] = await Promise.all([
       pool.query(
-        `SELECT id, username, email, full_name, is_admin, created_at, updated_at 
+        `SELECT id, username, email, is_admin, created_at, updated_at 
          FROM users 
          ORDER BY created_at DESC 
          LIMIT $1 OFFSET $2`,
@@ -71,7 +71,7 @@ router.get(
       const { id } = req.params;
 
       const result = await pool.query(
-        `SELECT id, username, email, full_name, is_admin, created_at, updated_at 
+        `SELECT id, username, email, is_admin, created_at, updated_at 
          FROM users 
          WHERE id = $1`,
         [id],
@@ -137,7 +137,7 @@ router.patch(
         `UPDATE users 
          SET ${setClauses.join(", ")}, updated_at = NOW() 
          WHERE id = $${values.length} 
-         RETURNING id, username, email, full_name, is_admin, created_at, updated_at`,
+         RETURNING id, username, email, is_admin, created_at, updated_at`,
         values,
       );
 
