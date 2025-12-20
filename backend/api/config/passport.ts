@@ -6,12 +6,8 @@ import pool from "../db";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
 
-// Prioritize BACKEND_URL if explicitly set, otherwise use VERCEL_URL, fallback to localhost
-const BACKEND_URL =
-  process.env.BACKEND_URL ||
-  (process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : "https://localhost:3000");
+// Use BACKEND_URL for OAuth callback (should be set to your frontend domain)
+const BACKEND_URL = process.env.BACKEND_URL || "https://localhost:3000";
 
 if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
   console.warn(
