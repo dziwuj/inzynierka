@@ -60,8 +60,12 @@
   ],
   "rewrites": [
     {
-      "source": "/api/((?!auth/google/callback).*)",
-      "destination": "https://inzynierka-backend.vercel.app/api/$1"
+      "source": "/api/auth/google/callback",
+      "destination": "/api/oauth-callback"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "https://inzynierka-backend.vercel.app/api/:path*"
     }
   ]
 }
