@@ -57,15 +57,5 @@
         }
       ]
     }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/:path(.*)",
-      "destination": "https://inzynierka-backend.vercel.app/api/:path"
-    },
-    {
-      "source": "/:path((?!api).*)",
-      "destination": "/index.html"
-    }
   ]
 }
