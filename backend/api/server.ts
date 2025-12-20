@@ -114,9 +114,9 @@ app.get("/api/docs/swagger", (req, res) => {
 // Routes
 // ============================================================================
 
-app.use("/api", authRoutes);
-app.use("/api", userRoutes);
-app.use("/api", modelRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/models", modelRoutes);
 
 app.get("/", (req, res) => {
   res.json({
