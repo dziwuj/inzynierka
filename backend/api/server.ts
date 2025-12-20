@@ -56,7 +56,7 @@ app.use(passport.initialize());
 // Health Check
 // ============================================================================
 
-app.get("/health", async (req, res) => {
+app.get("/api/health", async (req, res) => {
   try {
     await pool.query("SELECT 1");
     res.json({
@@ -114,16 +114,16 @@ app.get("/api/docs/swagger", (req, res) => {
 // Routes
 // ============================================================================
 
-app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/models", modelRoutes);
+app.use("/api", authRoutes);
+app.use("/api", userRoutes);
+app.use("/api", modelRoutes);
 
 app.get("/", (req, res) => {
   res.json({
     message: "3D Model Viewer API",
     version: "1.0.0",
     endpoints: {
-      health: "/health",
+      health: "/api/health",
       docs: "/api/docs",
       swagger: "/api/docs/swagger",
       auth: "/api/auth",

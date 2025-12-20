@@ -57,5 +57,11 @@
         }
       ]
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://inzynierka-backend.vercel.app/api/:path*"
+    }
   ]
 }
