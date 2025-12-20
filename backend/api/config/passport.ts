@@ -30,7 +30,6 @@ passport.use(
     async (accessToken, refreshToken, profile, done) => {
       try {
         const email = profile.emails?.[0]?.value;
-        const displayName = profile.displayName;
 
         if (!email) {
           return done(new Error("No email provided by Google"), undefined);
