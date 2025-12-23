@@ -1,12 +1,11 @@
 // Re-export auth types for convenient importing
 export type {
-  User,
-  RegisterRequest,
   LoginRequest,
-  ResendVerificationRequest,
-  RegisterResponse,
   LoginResponse,
-  VerifyEmailResponse,
+  RegisterRequest,
+  RegisterResponse,
+  ResendVerificationRequest,
   ResendVerificationResponse,
-  RefreshResponse,
+  User,
+  VerifyEmailResponse,
 } from "./auth";

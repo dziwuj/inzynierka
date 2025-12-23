@@ -7,6 +7,8 @@ import { useStores } from "@/stores/useStores";
 
 import styles from "./Login.module.scss";
 
+import Logo from "@/assets/icons/logo.svg";
+
 export const Login: FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -34,7 +36,7 @@ export const Login: FC = () => {
         const user = JSON.parse(decodeURIComponent(userParam));
         authStore.setToken(token);
         authStore.setUser(user);
-        navigate("/");
+        navigate("/dashboard");
       } catch (err) {
         console.error("Failed to parse OAuth user data:", err);
         setError("Authentication failed. Please try again.");
@@ -58,6 +60,12 @@ export const Login: FC = () => {
       {/* Login Section */}
       <div className={styles.loginSection}>
         <div className={styles.card}>
+          <div className={styles.logoContainer}>
+            <div className={styles.logo}>
+              <img src={Logo} alt="3D Model Viewer Logo" />
+            </div>
+            <h2 className={styles.appName}>3D Model Viewer</h2>
+          </div>
           <h1 className={styles.title}>Welcome Back</h1>
           <p className={styles.subtitle}>Sign in to your account</p>
 

@@ -41,7 +41,7 @@ export const useAuth = () => {
 
       authStore.setToken(token);
       authStore.setUser(user);
-      navigate("/");
+      navigate("/dashboard");
 
       return { success: true, data: response.data };
     } catch (err) {
@@ -80,7 +80,7 @@ export const useAuth = () => {
 
   const useOfflineMode = () => {
     authStore.setOfflineMode(true);
-    navigate("/");
+    navigate("/offline");
   };
 
   return {

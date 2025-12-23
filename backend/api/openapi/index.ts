@@ -14,7 +14,6 @@ import {
   PaginatedResponseSchema,
   SuccessResponseSchema,
   UpdateModelSchema,
-  UpdateUserSchema,
   UserSchema,
   UuidSchema,
 } from "../schemas";
@@ -29,7 +28,6 @@ const registry = new OpenAPIRegistry();
 // Register schemas
 registry.register("User", UserSchema);
 registry.register("CreateUserRequest", CreateUserSchema);
-registry.register("UpdateUserRequest", UpdateUserSchema);
 registry.register("LoginRequest", LoginSchema);
 registry.register("LoginResponse", LoginResponseSchema);
 registry.register("Model", ModelSchema);
@@ -101,118 +99,6 @@ registry.registerPath({
     },
     401: {
       description: "Invalid credentials",
-      content: {
-        "application/json": {
-          schema: ErrorResponseSchema,
-        },
-      },
-    },
-  },
-});
-
-// ============================================================================
-// User Routes
-// ============================================================================
-
-registry.registerPath({
-  method: "get",
-  path: "/api/users",
-  tags: ["Users"],
-  summary: "Get all users",
-  responses: {
-    200: {
-      description: "List of users",
-      content: {
-        "application/json": {
-          schema: PaginatedResponseSchema(UserSchema),
-        },
-      },
-    },
-  },
-});
-
-registry.registerPath({
-  method: "get",
-  path: "/api/users/{id}",
-  tags: ["Users"],
-  summary: "Get user by ID",
-  request: {
-    params: PathIdSchema,
-  },
-  responses: {
-    200: {
-      description: "User found",
-      content: {
-        "application/json": {
-          schema: UserSchema,
-        },
-      },
-    },
-    404: {
-      description: "User not found",
-      content: {
-        "application/json": {
-          schema: ErrorResponseSchema,
-        },
-      },
-    },
-  },
-});
-
-registry.registerPath({
-  method: "patch",
-  path: "/api/users/{id}",
-  tags: ["Users"],
-  summary: "Update user",
-  request: {
-    params: PathIdSchema,
-    body: {
-      content: {
-        "application/json": {
-          schema: UpdateUserSchema,
-        },
-      },
-    },
-  },
-  responses: {
-    200: {
-      description: "User updated",
-      content: {
-        "application/json": {
-          schema: UserSchema,
-        },
-      },
-    },
-    404: {
-      description: "User not found",
-      content: {
-        "application/json": {
-          schema: ErrorResponseSchema,
-        },
-      },
-    },
-  },
-});
-
-registry.registerPath({
-  method: "delete",
-  path: "/api/users/{id}",
-  tags: ["Users"],
-  summary: "Delete user",
-  request: {
-    params: PathIdSchema,
-  },
-  responses: {
-    200: {
-      description: "User deleted",
-      content: {
-        "application/json": {
-          schema: SuccessResponseSchema,
-        },
-      },
-    },
-    404: {
-      description: "User not found",
       content: {
         "application/json": {
           schema: ErrorResponseSchema,

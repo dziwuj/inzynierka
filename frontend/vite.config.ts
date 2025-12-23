@@ -99,7 +99,10 @@ export default ({ mode }: { mode: string }) => {
             },
             proxy: {
               "/api": {
-                target: process.env.VITE_API_URL,
+                target:
+                  process.env.VITE_PROXY_TARGET ||
+                  process.env.VITE_API_URL ||
+                  "https://localhost:3000",
                 changeOrigin: true,
                 secure: false,
               },

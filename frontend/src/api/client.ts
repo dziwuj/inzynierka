@@ -60,18 +60,6 @@ class ApiClient {
       const data = (await response.json()) as ResponseType | ErrorResponse;
 
       if (!response.ok) {
-        // Only try to refresh token if we got a 401 on an authenticated request
-        if (response.status === 401 && !skipAuth) {
-          const refreshed = await rootStore.authStore.refresh();
-          if (refreshed) {
-            return this.request<ResponseType, BodyType>(
-              endpoint,
-              method,
-              options,
-            );
-          }
-        }
-
         throw new Error(
           `API Error: ${(data as ErrorResponse).error || (data as ErrorResponse).message || response.statusText}`,
         );
@@ -102,33 +90,37 @@ class ApiClient {
     });
   }
 
-  public put<ResponseType, BodyType>(
-    endpoint: string,
-    body: BodyType,
-    options?: RequestOptions<BodyType>,
-  ): Promise<ApiResponse<ResponseType>> {
-    return this.request<ResponseType, BodyType>(endpoint, "PUT", {
-      ...options,
-      body,
-    });
-  }
-
-  public patch<ResponseType, BodyType>(
-    endpoint: string,
-    body: BodyType,
-    options?: RequestOptions<BodyType>,
-  ): Promise<ApiResponse<ResponseType>> {
-    return this.request<ResponseType, BodyType>(endpoint, "PATCH", {
-      ...options,
-      body,
-    });
-  }
-
   public delete<ResponseType>(
     endpoint: string,
     options?: RequestOptions,
   ): Promise<ApiResponse<ResponseType>> {
     return this.request<ResponseType>(endpoint, "DELETE", options);
+  }
+
+  public async upload(
+    endpoint: string,
+    formData: FormData,
+  ): Promise<ApiResponse<unknown>> {
+    const token = rootStore.authStore.accessToken;
+    const authHeaders: Record<string, string> = {};
+    if (token) {
+      authHeaders["Authorization"] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      method: "POST",
+      headers: authHeaders,
+      body: formData,
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const error: ErrorResponse = await response.json();
+      throw new Error(error.message || "Upload failed");
+    }
+
+    const data = await response.json();
+    return { data };
   }
 }
 

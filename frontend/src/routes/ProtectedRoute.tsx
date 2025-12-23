@@ -9,6 +9,6 @@ export const ProtectedRoute = observer(() => {
   return isAuthenticated || isOfflineMode ? (
     <Outlet />
   ) : (
-    <Navigate to="/login" replace />
+    <Navigate to="/" replace />
   );
 });

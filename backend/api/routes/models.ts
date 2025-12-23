@@ -1,54 +1,91 @@
 import { Request, Response, Router } from "express";
+import multer from "multer";
 import { z } from "zod";
 
 import pool from "../db";
+import { authenticate } from "../middleware/authenticate";
 import { validate } from "../middleware/validation";
 import {
-  CreateModelSchema,
   ErrorResponseSchema,
   SuccessResponseSchema,
-  UpdateModelSchema,
   UuidSchema,
 } from "../schemas";
 
 const router = Router();
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 100 * 1024 * 1024 },
+}); // 100MB limit
+
+// Storage limit per user (500MB)
+const STORAGE_LIMIT_BYTES = 500 * 1024 * 1024;
 
 // ============================================================================
-// Get All Models (with pagination)
+// Get Storage Info (authenticated)
 // ============================================================================
 
-router.get("/", async (req: Request, res: Response) => {
+router.get(
+  "/storage/info",
+  authenticate,
+  async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).userId;
+
+      const result = await pool.query(
+        `SELECT COALESCE(SUM(file_size), 0) as used_bytes, COUNT(*) as model_count 
+       FROM models 
+       WHERE user_id = $1`,
+        [userId],
+      );
+
+      res.json({
+        usedBytes: parseInt(result.rows[0].used_bytes),
+        maxBytes: STORAGE_LIMIT_BYTES,
+        modelCount: parseInt(result.rows[0].model_count),
+      });
+    } catch (error) {
+      console.error("Get storage info error:", error);
+      res.status(500).json(
+        ErrorResponseSchema.parse({
+          error: "Internal server error",
+        }),
+      );
+    }
+  },
+);
+
+// ============================================================================
+// Get All User Models (authenticated)
+// ============================================================================
+
+router.get("/", authenticate, async (req: Request, res: Response) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const offset = (page - 1) * limit;
+    const userId = (req as any).userId;
 
-    const [dataResult, countResult] = await Promise.all([
-      pool.query(
-        `SELECT id, user_id, name, description, file_name, file_size, mime_type, 
-                is_public, processing_status, vertices_count, polygons_count, 
-                created_at, updated_at 
-         FROM models 
-         WHERE is_public = true 
-         ORDER BY created_at DESC 
-         LIMIT $1 OFFSET $2`,
-        [limit, offset],
-      ),
-      pool.query("SELECT COUNT(*) FROM models WHERE is_public = true"),
-    ]);
+    const result = await pool.query(
+      `SELECT id, user_id, name, file_format, file_size, 
+              created_at, updated_at 
+       FROM models 
+       WHERE user_id = $1 
+       ORDER BY created_at DESC`,
+      [userId],
+    );
 
-    const total = parseInt(countResult.rows[0].count);
-    const totalPages = Math.ceil(total / limit);
+    // Transform to match frontend Model interface
+    const models = result.rows.map(row => ({
+      id: row.id,
+      userId: row.user_id,
+      name: row.name,
+      fileName: `${row.name}.${row.file_format.toLowerCase()}`,
+      fileSize: row.file_size,
+      fileFormat: row.file_format.toUpperCase(),
+      fileUrl: `/api/models/${row.id}/download`,
+      thumbnailUrl: null,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
 
-    res.json({
-      data: dataResult.rows,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages,
-      },
-    });
+    res.json(models);
   } catch (error) {
     console.error("Get models error:", error);
     res.status(500).json(
@@ -60,53 +97,99 @@ router.get("/", async (req: Request, res: Response) => {
 });
 
 // ============================================================================
-// Upload Model
+// Upload Model (authenticated)
 // ============================================================================
 
 router.post(
   "/",
-  validate(
-    z.object({
-      body: CreateModelSchema,
-    }),
-  ),
+  authenticate,
+  upload.single("model"),
   async (req: Request, res: Response) => {
     try {
-      const {
-        user_id,
-        name,
-        description,
-        file_name,
-        file_data,
-        mime_type,
-        is_public,
-      } = req.body;
+      const userId = (req as any).userId;
+      const { name } = req.body;
+      const file = (req as any).file as Express.Multer.File | undefined;
 
-      // Decode base64 file data
-      const fileBuffer = Buffer.from(file_data, "base64");
-      const file_size = fileBuffer.length;
+      if (!file) {
+        res.status(400).json(
+          ErrorResponseSchema.parse({
+            error: "No file uploaded",
+          }),
+        );
+        return;
+      }
 
-      // TODO: Store file in object storage (S3, Azure Blob, etc.)
-      // For now, we'll just store metadata in database
+      if (!name || name.trim() === "") {
+        res.status(400).json(
+          ErrorResponseSchema.parse({
+            error: "Model name is required",
+          }),
+        );
+        return;
+      }
 
-      const result = await pool.query(
-        `INSERT INTO models (user_id, name, description, file_name, file_size, mime_type, is_public) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7) 
-         RETURNING id, user_id, name, description, file_name, file_size, mime_type, 
-                   is_public, processing_status, vertices_count, polygons_count, 
-                   created_at, updated_at`,
-        [
-          user_id,
-          name,
-          description || null,
-          file_name,
-          file_size,
-          mime_type,
-          is_public,
-        ],
+      // Extract file extension
+      const fileExtension =
+        file.originalname.split(".").pop()?.toLowerCase() || "";
+      const allowedExtensions = ["gltf", "glb", "fbx", "obj", "stl", "ply"];
+
+      if (!allowedExtensions.includes(fileExtension)) {
+        res.status(400).json(
+          ErrorResponseSchema.parse({
+            error: "Invalid file format",
+            message: `Allowed formats: ${allowedExtensions.join(", ")}`,
+          }),
+        );
+        return;
+      }
+
+      // Check storage limit
+      const storageResult = await pool.query(
+        `SELECT COALESCE(SUM(file_size), 0) as used_bytes 
+         FROM models 
+         WHERE user_id = $1`,
+        [userId],
       );
 
-      res.status(201).json(result.rows[0]);
+      const usedBytes = parseInt(storageResult.rows[0].used_bytes);
+      if (usedBytes + file.size > STORAGE_LIMIT_BYTES) {
+        res.status(400).json(
+          ErrorResponseSchema.parse({
+            error: "Storage limit exceeded",
+            message: `You have used ${(usedBytes / (1024 * 1024)).toFixed(2)}MB of ${(STORAGE_LIMIT_BYTES / (1024 * 1024)).toFixed(0)}MB. This file would exceed your limit.`,
+          }),
+        );
+        return;
+      }
+
+      // TODO: Store file in object storage (S3, Azure Blob, etc.)
+      // For now, we'll store the file as BYTEA in database (NOT recommended for production)
+
+      const result = await pool.query(
+        `INSERT INTO models (user_id, name, file_format, file_size, file_data) 
+         VALUES ($1, $2, $3, $4, $5) 
+         RETURNING id, user_id, name, file_format, file_size, created_at, updated_at`,
+        [userId, name.trim(), fileExtension, file.size, file.buffer],
+      );
+
+      const row = result.rows[0];
+      const model = {
+        id: row.id,
+        userId: row.user_id,
+        name: row.name,
+        fileName: `${row.name}.${row.file_format}`,
+        fileSize: row.file_size,
+        fileFormat: row.file_format.toUpperCase(),
+        fileUrl: `/api/models/${row.id}/download`,
+        thumbnailUrl: null,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      };
+
+      res.status(201).json({
+        model,
+        message: "Model uploaded successfully",
+      });
     } catch (error) {
       console.error("Upload model error:", error);
       res.status(500).json(
@@ -119,11 +202,12 @@ router.post(
 );
 
 // ============================================================================
-// Get Model by ID
+// Get Model by ID (authenticated)
 // ============================================================================
 
 router.get(
   "/:id",
+  authenticate,
   validate(
     z.object({
       params: z.object({ id: UuidSchema }),
@@ -132,14 +216,14 @@ router.get(
   async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
+      const userId = (req as any).userId;
 
       const result = await pool.query(
-        `SELECT id, user_id, name, description, file_name, file_size, mime_type, 
-                is_public, processing_status, vertices_count, polygons_count, 
+        `SELECT id, user_id, name, file_format, file_size, 
                 created_at, updated_at 
          FROM models 
-         WHERE id = $1 AND is_public = true`,
-        [id],
+         WHERE id = $1 AND user_id = $2`,
+        [id, userId],
       );
 
       if (result.rows.length === 0) {
@@ -151,7 +235,21 @@ router.get(
         return;
       }
 
-      res.json(result.rows[0]);
+      const row = result.rows[0];
+      const model = {
+        id: row.id,
+        userId: row.user_id,
+        name: row.name,
+        fileName: `${row.name}.${row.file_format}`,
+        fileSize: row.file_size,
+        fileFormat: row.file_format.toUpperCase(),
+        fileUrl: `/api/models/${row.id}/download`,
+        thumbnailUrl: null,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      };
+
+      res.json(model);
     } catch (error) {
       console.error("Get model error:", error);
       res.status(500).json(
@@ -164,11 +262,12 @@ router.get(
 );
 
 // ============================================================================
-// Download Model File
+// Download Model File (authenticated)
 // ============================================================================
 
 router.get(
   "/:id/download",
+  authenticate,
   validate(
     z.object({
       params: z.object({ id: UuidSchema }),
@@ -177,10 +276,11 @@ router.get(
   async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
+      const userId = (req as any).userId;
 
       const result = await pool.query(
-        `SELECT file_name, mime_type FROM models WHERE id = $1 AND is_public = true`,
-        [id],
+        `SELECT file_format, file_data FROM models WHERE id = $1 AND user_id = $2`,
+        [id, userId],
       );
 
       if (result.rows.length === 0) {
@@ -193,13 +293,29 @@ router.get(
       }
 
       // TODO: Retrieve file from object storage
-      // For now, return a placeholder response
-      res.setHeader("Content-Type", result.rows[0].mime_type);
+      // For now, return BYTEA data from database
+      const fileBuffer = result.rows[0].file_data;
+      const fileExtension = result.rows[0].file_format;
+
+      // Determine MIME type
+      const mimeTypes: Record<string, string> = {
+        gltf: "model/gltf+json",
+        glb: "model/gltf-binary",
+        fbx: "application/octet-stream",
+        obj: "text/plain",
+        stl: "application/vnd.ms-pki.stl",
+        ply: "application/octet-stream",
+      };
+
+      res.setHeader(
+        "Content-Type",
+        mimeTypes[fileExtension] || "application/octet-stream",
+      );
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="${result.rows[0].file_name}"`,
+        `attachment; filename="model.${fileExtension}"`,
       );
-      res.send("TODO: Implement file storage");
+      res.send(fileBuffer);
     } catch (error) {
       console.error("Download model error:", error);
       res.status(500).json(
@@ -212,77 +328,12 @@ router.get(
 );
 
 // ============================================================================
-// Update Model
-// ============================================================================
-
-router.patch(
-  "/:id",
-  validate(
-    z.object({
-      params: z.object({ id: UuidSchema }),
-      body: UpdateModelSchema,
-    }),
-  ),
-  async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
-      const updates = req.body;
-
-      const fields = Object.keys(updates);
-      if (fields.length === 0) {
-        res.status(400).json(
-          ErrorResponseSchema.parse({
-            error: "No fields to update",
-          }),
-        );
-        return;
-      }
-
-      const values: unknown[] = [];
-      const setClauses = fields.map((field, index) => {
-        values.push(updates[field]);
-        return `${field} = $${index + 1}`;
-      });
-
-      values.push(id);
-
-      const result = await pool.query(
-        `UPDATE models 
-         SET ${setClauses.join(", ")}, updated_at = NOW() 
-         WHERE id = $${values.length} 
-         RETURNING id, user_id, name, description, file_name, file_size, mime_type, 
-                   is_public, processing_status, vertices_count, polygons_count, 
-                   created_at, updated_at`,
-        values,
-      );
-
-      if (result.rows.length === 0) {
-        res.status(404).json(
-          ErrorResponseSchema.parse({
-            error: "Model not found",
-          }),
-        );
-        return;
-      }
-
-      res.json(result.rows[0]);
-    } catch (error) {
-      console.error("Update model error:", error);
-      res.status(500).json(
-        ErrorResponseSchema.parse({
-          error: "Internal server error",
-        }),
-      );
-    }
-  },
-);
-
-// ============================================================================
-// Delete Model
+// Delete Model (authenticated)
 // ============================================================================
 
 router.delete(
   "/:id",
+  authenticate,
   validate(
     z.object({
       params: z.object({ id: UuidSchema }),
@@ -291,12 +342,11 @@ router.delete(
   async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-
-      // TODO: Delete file from object storage
+      const userId = (req as any).userId;
 
       const result = await pool.query(
-        "DELETE FROM models WHERE id = $1 RETURNING id",
-        [id],
+        "DELETE FROM models WHERE id = $1 AND user_id = $2 RETURNING id",
+        [id, userId],
       );
 
       if (result.rows.length === 0) {

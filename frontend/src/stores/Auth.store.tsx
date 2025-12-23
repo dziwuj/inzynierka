@@ -51,46 +51,6 @@ export class AuthStore {
     localStorage.setItem("offlineMode", enabled.toString());
   }
 
-  async login(username: string, password: string) {
-    this.loading = true;
-    try {
-      const { data } = await authApi.login({ username, password });
-      runInAction(() => {
-        this.accessToken = data.token;
-        this.user = data.user;
-        this.isAuthenticated = true;
-        this.setToken(data.token);
-        this.setUser(data.user);
-      });
-      return true;
-    } catch (error) {
-      console.error("Login failed:", error);
-      return false;
-    } finally {
-      runInAction(() => {
-        this.loading = false;
-      });
-    }
-  }
-
-  async refresh(): Promise<boolean> {
-    try {
-      const { data } = await authApi.refresh();
-      runInAction(() => {
-        this.accessToken = data.accessToken;
-        this.isAuthenticated = true;
-      });
-      return true;
-    } catch (error) {
-      console.warn("Token refresh failed:", error);
-      runInAction(() => {
-        this.accessToken = null;
-        this.isAuthenticated = false;
-      });
-      return false;
-    }
-  }
-
   async logout() {
     try {
       if (!this.isOfflineMode) {
@@ -99,6 +59,11 @@ export class AuthStore {
     } catch (error) {
       console.warn("Logout request failed:", error);
     } finally {
+      // Clear offline models when logging out
+      if (this.isOfflineMode && this.rootStore.modelsStore) {
+        this.rootStore.modelsStore.clearOfflineModels();
+      }
+
       runInAction(() => {
         this.accessToken = null;
         this.user = null;

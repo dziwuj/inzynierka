@@ -9,7 +9,7 @@ import path from "path";
 
 import pool from "./db";
 import { generateOpenApiDocument } from "./openapi";
-import { authRoutes, modelRoutes, userRoutes } from "./routes";
+import { authRoutes, modelRoutes } from "./routes";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -115,7 +115,6 @@ app.get("/api/docs/swagger", (req, res) => {
 // ============================================================================
 
 app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
 app.use("/api/models", modelRoutes);
 
 app.get("/", (req, res) => {
@@ -127,7 +126,6 @@ app.get("/", (req, res) => {
       docs: "/api/docs",
       swagger: "/api/docs/swagger",
       auth: "/api/auth",
-      users: "/api/users",
       models: "/api/models",
     },
   });

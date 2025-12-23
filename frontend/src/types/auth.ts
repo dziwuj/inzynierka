@@ -43,7 +43,3 @@ export interface VerifyEmailResponse {
 export interface ResendVerificationResponse {
   message: string;
 }
-
-export interface RefreshResponse {
-  accessToken: string;
-}

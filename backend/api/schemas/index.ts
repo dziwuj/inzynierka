@@ -57,14 +57,6 @@ export const CreateUserSchema = z
   })
   .openapi("CreateUser");
 
-export const UpdateUserSchema = z
-  .object({
-    username: z.string().min(3).max(50).optional(),
-    email: EmailSchema.optional(),
-    is_admin: z.boolean().optional(),
-  })
-  .openapi("UpdateUser");
-
 export const LoginSchema = z
   .object({
     username: z.string().openapi({
@@ -228,7 +220,6 @@ export const PaginatedResponseSchema = <T extends z.ZodTypeAny>(
 
 export type User = z.infer<typeof UserSchema>;
 export type CreateUser = z.infer<typeof CreateUserSchema>;
-export type UpdateUser = z.infer<typeof UpdateUserSchema>;
 export type Login = z.infer<typeof LoginSchema>;
 export type LoginResponse = z.infer<typeof LoginResponseSchema>;
 export type Model = z.infer<typeof ModelSchema>;

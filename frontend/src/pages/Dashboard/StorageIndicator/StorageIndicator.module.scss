@@ -1,0 +1,93 @@
+@use "@styles/variables" as *;
+@use "@styles/mixins" as *;
+
+.storageIndicator {
+  background: var(--color-gray-100);
+  border: 1px solid var(--color-gray-300);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  gap: 1rem;
+
+  @include mobile {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.label {
+  font-size: 0.875rem;
+  color: var(--color-gray-600);
+  font-weight: 500;
+}
+
+.value {
+  font-size: 1.25rem;
+  color: var(--color-gray-900);
+  font-weight: 700;
+}
+
+.models {
+  font-size: 0.875rem;
+  color: var(--color-gray-600);
+}
+
+.count {
+  font-weight: 700;
+  color: var(--color-gray-900);
+}
+
+.progressContainer {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.progressBar {
+  flex: 1;
+  height: 0.75rem;
+  background: var(--color-gray-300);
+  border-radius: 0.375rem;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 0.375rem;
+  transition:
+    width 0.3s ease,
+    background-color 0.3s ease;
+
+  &.normal {
+    background: linear-gradient(90deg, #4ade80, #22c55e);
+  }
+
+  &.warning {
+    background: linear-gradient(90deg, #fbbf24, #f59e0b);
+  }
+
+  &.danger {
+    background: linear-gradient(90deg, #f87171, #ef4444);
+  }
+}
+
+.percentage {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-gray-700);
+  min-width: 3.5rem;
+  text-align: right;
+}

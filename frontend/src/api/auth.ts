@@ -1,7 +1,6 @@
 import type {
   LoginRequest,
   LoginResponse,
-  RefreshResponse,
   RegisterRequest,
   RegisterResponse,
   ResendVerificationRequest,
@@ -45,12 +44,6 @@ export const authApi = {
       data,
       { skipAuth: true },
     ),
-
-  /**
-   * Refresh access token
-   */
-  refresh: () =>
-    client.get<RefreshResponse>("/auth/refresh", { skipAuth: true }),
 
   /**
    * Logout and invalidate session

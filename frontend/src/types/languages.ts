@@ -1,5 +1,5 @@
 export interface ITranslations {
   HomeScreen: {
-    title: string
-  }
+    title: string;
+  };
 }

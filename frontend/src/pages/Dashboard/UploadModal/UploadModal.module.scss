@@ -1,0 +1,230 @@
+@use "@styles/variables" as *;
+@use "@styles/mixins" as *;
+
+.modalBackdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal {
+  background: var(--color-gray-50);
+  border-radius: 1rem;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--color-gray-300);
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-gray-900);
+  margin: 0;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  line-height: 1;
+  color: var(--color-gray-600);
+  cursor: pointer;
+  padding: 0;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    color: var(--color-gray-900);
+  }
+}
+
+.content {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.dropZone {
+  border: 2px dashed var(--color-gray-400);
+  border-radius: 0.75rem;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--color-gray-100);
+  position: relative;
+
+  &:hover {
+    border-color: var(--color-gray-600);
+    background: var(--color-gray-200);
+  }
+
+  &.dragging {
+    border-color: var(--color-gray-900);
+    background: var(--color-gray-300);
+  }
+
+  &.hasFile {
+    border-color: #22c55e;
+    background: #f0fdf4;
+  }
+}
+
+.dropZoneContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.uploadIcon {
+  font-size: 3rem;
+}
+
+.dropText {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-gray-900);
+  margin: 0;
+}
+
+.orText {
+  font-size: 0.875rem;
+  color: var(--color-gray-600);
+  margin: 0;
+}
+
+.browseButton {
+  @include button-base;
+  @include button-primary;
+  padding: 0.5rem 1.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  pointer-events: none;
+}
+
+.formatHint {
+  font-size: 0.75rem;
+  color: var(--color-gray-500);
+  margin: 0;
+}
+
+.fileInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.fileName {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-gray-900);
+  word-break: break-all;
+}
+
+.fileSize {
+  font-size: 0.875rem;
+  color: var(--color-gray-600);
+}
+
+.fileInput {
+  display: none;
+}
+
+.error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-gray-900);
+}
+
+.input {
+  padding: 0.75rem;
+  border: 1px solid var(--color-gray-400);
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  background: var(--color-gray-50);
+  color: var(--color-gray-900);
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-gray-600);
+  }
+
+  &::placeholder {
+    color: var(--color-gray-500);
+  }
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  border-top: 1px solid var(--color-gray-300);
+}
+
+.cancelButton {
+  @include button-base;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  background: var(--color-gray-200);
+  color: var(--color-gray-700);
+
+  &:hover:not(:disabled) {
+    background: var(--color-gray-300);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.uploadButton {
+  @include button-base;
+  @include button-primary;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
