@@ -1,10 +1,4 @@
 {
-  "functions": {
-    "api/oauth-callback.ts": {
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  },
   "headers": [
     {
       "source": "/(.*).html",
@@ -65,10 +59,6 @@
     }
   ],
   "rewrites": [
-    {
-      "source": "/api/auth/google/callback",
-      "destination": "/api/oauth-callback"
-    },
     {
       "source": "/api/:path*",
       "destination": "https://inzynierka-backend.vercel.app/api/:path*"
