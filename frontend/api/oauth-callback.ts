@@ -33,7 +33,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get("location");
       if (location) {
-        return res.redirect(307, location);
+        console.log("🔀 Redirecting to:", location);
+        return res.redirect(302, location);
       }
     }
 
