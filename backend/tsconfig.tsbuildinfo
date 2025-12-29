@@ -1,1 +1,0 @@
-{"root":["./api/server.ts","./api/config/passport.ts","./api/db/index.ts","./api/middleware/authenticate.ts","./api/middleware/validation.ts","./api/openapi/index.ts","./api/routes/auth.ts","./api/routes/index.ts","./api/routes/models.ts","./api/schemas/index.ts","./api/utils/email.ts"],"version":"5.9.3"}
