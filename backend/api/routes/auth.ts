@@ -56,17 +56,32 @@ router.post(
           user.email === email &&
           (!user.password_hash || user.password_hash === "")
         ) {
-          // Hash password and add it to the existing account
+          // Hash password
           const hashedPassword = await bcrypt.hash(password, 10);
 
+          // Generate verification token
+          const verificationToken = generateVerificationToken();
+          const verificationExpiresAt = new Date(
+            Date.now() + 24 * 60 * 60 * 1000,
+          ); // 24 hours
+
+          // Update password and set email as unverified, add verification token
           await pool.query(
-            "UPDATE users SET password_hash = $1, email_verified = true WHERE id = $2",
-            [hashedPassword, user.id],
+            "UPDATE users SET password_hash = $1, email_verified = false, verification_token = $2, verification_expires_at = $3 WHERE id = $4",
+            [hashedPassword, verificationToken, verificationExpiresAt, user.id],
           );
 
-          res.status(200).json({
+          // Send verification email
+          try {
+            await sendVerificationEmail(email, username, verificationToken);
+          } catch (emailError) {
+            console.error("Failed to send verification email:", emailError);
+            // Continue even if email fails
+          }
+
+          res.status(201).json({
             message:
-              "Password successfully added to your Google account. You can now log in with either method.",
+              "Password added to your account. Please check your email to verify before logging in with password.",
           });
           return;
         }
@@ -391,12 +406,14 @@ router.post(
 
       // Check if user already exists and is verified
       const userResult = await pool.query(
-        `SELECT email_verified FROM users WHERE email = $1`,
+        `SELECT id, username, email_verified FROM users WHERE email = $1`,
         [email],
       );
 
       if (userResult.rows.length > 0) {
-        if (userResult.rows[0].email_verified) {
+        const user = userResult.rows[0];
+
+        if (user.email_verified) {
           res.status(400).json(
             ErrorResponseSchema.parse({
               error: "Email is already verified. You can log in.",
@@ -404,6 +421,28 @@ router.post(
           );
           return;
         }
+
+        // User exists but not verified - generate new token
+        const verificationToken = generateVerificationToken();
+        const verificationExpiresAt = new Date(
+          Date.now() + 24 * 60 * 60 * 1000,
+        );
+
+        await pool.query(
+          `UPDATE users 
+           SET verification_token = $1, 
+               verification_expires_at = $2 
+           WHERE id = $3`,
+          [verificationToken, verificationExpiresAt, user.id],
+        );
+
+        // Send verification email
+        await sendVerificationEmail(email, user.username, verificationToken);
+
+        res.status(200).json({
+          message: "Verification email sent. Please check your inbox.",
+        });
+        return;
       }
 
       // Don't reveal if email doesn't exist
