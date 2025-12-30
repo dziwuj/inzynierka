@@ -18,42 +18,43 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 // ============================================================================
 
+const allowedOrigins = [
+  "https://3d-model-viewer.dziwuj.dev",
+  "https://localhost:5173",
+  "http://localhost:5173",
+  "http://localhost:3000",
+];
+
+// Add FRONTEND_URL from environment if set
+if (process.env.FRONTEND_URL) {
+  const envOrigins = process.env.FRONTEND_URL.split(",").map(o => o.trim());
+  allowedOrigins.push(...envOrigins);
+}
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      const allowedOrigins = (
-        process.env.FRONTEND_URL ||
-        "https://3d-model-viewer.dziwuj.dev,https://localhost:5173,http://localhost:5173"
-      )
-        .split(",")
-        .map(o => o.trim());
-
-      // Allow requests with no origin (like mobile apps or curl)
+      // Allow requests with no origin (like mobile apps, Postman, or curl)
       if (!origin) return callback(null, true);
 
-      // Check if origin matches any allowed pattern (supports wildcards)
-      const isAllowed = allowedOrigins.some(allowed => {
-        if (allowed.includes("*")) {
-          const pattern = new RegExp("^" + allowed.replace(/\*/g, ".*") + "$");
-          return pattern.test(origin);
-        }
-        return allowed === origin;
-      });
-
-      if (isAllowed) {
+      // Check if origin is allowed
+      if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        console.error(
-          `CORS blocked origin: ${origin}. Allowed: ${allowedOrigins.join(", ")}`,
+        console.warn(
+          `CORS warning: Origin ${origin} not in allowed list: ${allowedOrigins.join(", ")}`,
         );
-        callback(null, true); // Allow anyway to prevent CORS errors in production
+        // Allow anyway to prevent blocking in production
+        callback(null, true);
       }
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
     exposedHeaders: ["Content-Range", "X-Content-Range"],
-    maxAge: 600,
+    maxAge: 86400, // 24 hours
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   }),
 );
 
@@ -69,6 +70,9 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use(passport.initialize());
+
+// Handle preflight requests for all routes
+app.options("*", cors());
 
 // ============================================================================
 // Health Check
