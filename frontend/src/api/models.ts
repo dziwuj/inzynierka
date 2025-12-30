@@ -53,81 +53,60 @@ export const modelsApi = {
     thumbnail?: Blob | null,
   ): Promise<Model> {
     try {
-      // Upload files directly to Vercel Blob
+      // Upload files to backend which then uploads to Vercel Blob
       const uploadedFiles = [];
 
       for (const file of files) {
-        const response = await fetch(`/api/models/upload-url`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-          },
-          body: JSON.stringify({
-            filename: file.name,
-            contentType: file.type || "application/octet-stream",
-          }),
+        // Convert file to base64
+        const fileData = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const base64 = (reader.result as string).split(",")[1];
+            resolve(base64);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
         });
 
-        if (!response.ok) {
-          throw new Error(`Failed to get upload URL for ${file.name}`);
-        }
-
-        const { url } = await response.json();
-
-        // Upload directly to Blob storage
-        const uploadResponse = await fetch(url, {
-          method: "PUT",
-          headers: {
-            "Content-Type": file.type || "application/octet-stream",
-            "x-ms-blob-type": "BlockBlob",
-          },
-          body: file,
+        const response = await client.post<
+          { url: string; pathname: string; size: number },
+          { filename: string; contentType: string; fileData: string }
+        >("/models/upload-file", {
+          filename: file.name,
+          contentType: file.type || "application/octet-stream",
+          fileData,
         });
 
-        if (!uploadResponse.ok) {
-          throw new Error(`Failed to upload ${file.name}`);
-        }
-
-        const blob = await uploadResponse.json();
         uploadedFiles.push({
-          url: blob.url,
-          pathname: blob.pathname,
-          size: file.size,
+          url: response.data.url,
+          pathname: response.data.pathname,
+          size: response.data.size,
         });
       }
 
       // Upload thumbnail if available
       let thumbnailUrl = null;
       if (thumbnail) {
-        const thumbResponse = await fetch(`/api/models/upload-url`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-          },
-          body: JSON.stringify({
-            filename: "thumbnail.jpg",
-            contentType: "image/jpeg",
-          }),
+        const thumbData = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const base64 = (reader.result as string).split(",")[1];
+            resolve(base64);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(thumbnail);
         });
 
-        if (thumbResponse.ok) {
-          const { url } = await thumbResponse.json();
-          const uploadResponse = await fetch(url, {
-            method: "PUT",
-            headers: {
-              "Content-Type": "image/jpeg",
-              "x-ms-blob-type": "BlockBlob",
-            },
-            body: thumbnail,
-          });
+        const thumbResponse = await client.post<
+          { url: string; pathname: string; size: number },
+          { filename: string; contentType: string; fileData: string }
+        >("/models/upload-file", {
+          filename: "thumbnail.jpg",
+          contentType: "image/jpeg",
+          fileData: thumbData,
+        });
 
-          if (uploadResponse.ok) {
-            const blob = await uploadResponse.json();
-            thumbnailUrl = blob.url;
-          }
-        }
+        thumbnailUrl = thumbResponse.data.url;
       }
 
       // Save metadata to database

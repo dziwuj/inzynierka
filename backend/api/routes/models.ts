@@ -1,4 +1,4 @@
-import { put, PutBlobResult } from "@vercel/blob";
+import { put } from "@vercel/blob";
 import { Request, Response, Router } from "express";
 import multer from "multer";
 import { z } from "zod";
@@ -38,17 +38,17 @@ const STORAGE_LIMIT_BYTES = 500 * 1024 * 1024;
 // ============================================================================
 
 router.post(
-  "/upload-url",
+  "/upload-file",
   authenticate,
   async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthenticatedRequest).userId;
-      const { filename, contentType } = req.body;
+      const { filename, contentType, fileData } = req.body;
 
       // Validate request body
-      if (!filename || !contentType) {
+      if (!filename || !contentType || !fileData) {
         res.status(400).json({
-          error: "Missing required fields: filename, contentType",
+          error: "Missing required fields: filename, contentType, fileData",
         });
         return;
       }
@@ -74,38 +74,29 @@ router.post(
       const randomString = Math.random().toString(36).substring(2, 15);
       const pathname = `models/${userId}/${timestamp}-${randomString}-${filename}`;
 
-      // Create a client upload token using Vercel Blob SDK
+      // Decode base64 file data
+      const buffer = Buffer.from(fileData, "base64");
+
+      // Upload to Vercel Blob
       const token = process.env.BLOB_READ_WRITE_TOKEN;
       if (!token) {
         throw new Error("BLOB_READ_WRITE_TOKEN not configured");
       }
 
-      // Use the Blob SDK to get a proper upload URL with client access
-      const blob = await put(pathname, Buffer.from(""), {
+      const blob = await put(pathname, buffer, {
         access: "public",
         token,
         addRandomSuffix: false,
-      });
-
-      // The blob.url is the final URL, but we need to generate a client upload URL
-      // For client-side uploads, we need to use the Vercel Blob client upload approach
-      const blobUrl = blob.url.replace(/^https:\/\//, "").split("/")[0];
-      const uploadUrl = `https://${blobUrl}/${pathname}`;
-
-      // Delete the placeholder blob
-      await fetch(blob.url, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        contentType,
       });
 
       res.json({
-        url: `${uploadUrl}?token=${token}`,
-        pathname,
+        url: blob.url,
+        pathname: blob.pathname,
+        size: buffer.length,
       });
     } catch (error) {
-      console.error("Generate upload URL error:", error);
+      console.error("File upload error:", error);
       res.status(500).json({
         error: "Internal server error",
         message: error instanceof Error ? error.message : "Unknown error",
