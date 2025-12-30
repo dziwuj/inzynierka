@@ -26,6 +26,13 @@ export const authenticate = (
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      // Set CORS headers before rejecting
+      const origin = req.headers.origin;
+      if (origin) {
+        res.setHeader("Access-Control-Allow-Origin", origin);
+        res.setHeader("Access-Control-Allow-Credentials", "true");
+      }
+
       res.status(401).json({
         error: "Unauthorized",
         message: "No token provided",
@@ -42,6 +49,13 @@ export const authenticate = (
       (req as AuthenticatedRequest).isAdmin = decoded.isAdmin;
       next();
     } catch {
+      // Set CORS headers before rejecting
+      const origin = req.headers.origin;
+      if (origin) {
+        res.setHeader("Access-Control-Allow-Origin", origin);
+        res.setHeader("Access-Control-Allow-Credentials", "true");
+      }
+
       res.status(401).json({
         error: "Unauthorized",
         message: "Invalid or expired token",
@@ -49,6 +63,14 @@ export const authenticate = (
     }
   } catch (error) {
     console.error("Authentication error:", error);
+
+    // Set CORS headers before error response
+    const origin = req.headers.origin;
+    if (origin) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+    }
+
     res.status(500).json({
       error: "Internal server error",
     });
