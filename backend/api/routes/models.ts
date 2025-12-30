@@ -263,7 +263,7 @@ router.post("/blob", authenticate, async (req: Request, res: Response) => {
           modelId,
           file.url, // Store URL in file_path field
           Buffer.from(""), // Empty buffer as placeholder
-          file.size || 0,
+          file.size || 1, // Minimum 1 to satisfy check constraint
           isMainFile,
           "application/octet-stream",
         ],
@@ -275,7 +275,7 @@ router.post("/blob", authenticate, async (req: Request, res: Response) => {
       await pool.query(
         `INSERT INTO model_files (model_id, file_path, file_data, file_size, is_main_file, mime_type)
          VALUES ($1, $2, $3, $4, $5, $6)`,
-        [modelId, thumbnailUrl, Buffer.from(""), 0, false, "image/jpeg"],
+        [modelId, thumbnailUrl, Buffer.from(""), 1, false, "image/jpeg"],
       );
     }
 
