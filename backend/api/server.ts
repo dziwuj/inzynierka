@@ -31,6 +31,42 @@ if (process.env.FRONTEND_URL) {
   allowedOrigins.push(...envOrigins);
 }
 
+// Manual CORS headers middleware (works better on Vercel)
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  // Always set CORS headers
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  } else if (origin) {
+    // Allow any origin as fallback
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+  );
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, X-Requested-With, Accept, Content-Length",
+  );
+  res.setHeader(
+    "Access-Control-Expose-Headers",
+    "Content-Range, X-Content-Range",
+  );
+  res.setHeader("Access-Control-Max-Age", "86400");
+
+  // Handle preflight immediately
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
+    return;
+  }
+
+  next();
+});
+
 app.use(
   cors({
     origin: (origin, callback) => {
