@@ -35,6 +35,11 @@ const upload = multer({
 // Storage limit per user (500MB)
 const STORAGE_LIMIT_BYTES = 500 * 1024 * 1024;
 
+interface ClientPayload {
+  filename?: string;
+  token?: string;
+}
+
 // ============================================================================
 // Generate Client Upload Token for Vercel Blob (authenticated)
 // This allows client-side direct uploads to bypass serverless limits
@@ -42,14 +47,38 @@ const STORAGE_LIMIT_BYTES = 500 * 1024 * 1024;
 
 router.post("/upload-token", async (req: Request, res: Response) => {
   try {
+    // Log the request body to debug
+    console.log("Request body:", JSON.stringify(req.body, null, 2));
+
     // handleUpload expects specific body structure from Vercel Blob client
-    // The clientPayload will be in req.body.payload (already parsed as object)
-    const clientPayload = req.body.payload || {};
+    // The clientPayload might be in different locations depending on the request
+    let clientPayload: ClientPayload = {};
+
+    if (req.body.payload) {
+      // If payload is a string, parse it
+      clientPayload =
+        typeof req.body.payload === "string"
+          ? JSON.parse(req.body.payload)
+          : req.body.payload;
+    } else if (req.body.clientPayload) {
+      clientPayload =
+        typeof req.body.clientPayload === "string"
+          ? JSON.parse(req.body.clientPayload)
+          : req.body.clientPayload;
+    } else {
+      // Fallback: check if filename and token are directly in body
+      clientPayload = req.body;
+    }
+
     const { filename, token } = clientPayload;
 
     if (!filename || !token) {
       res.status(400).json({
         error: "Missing filename or token in clientPayload",
+        debug: {
+          body: req.body,
+          clientPayload: clientPayload,
+        },
       });
       return;
     }
