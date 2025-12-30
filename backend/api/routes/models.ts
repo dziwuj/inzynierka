@@ -1,6 +1,5 @@
-import { Request, Response, Router } from "express";
 import { handleUpload } from "@vercel/blob/client";
-import { put } from "@vercel/blob";
+import { Request, Response, Router } from "express";
 import multer from "multer";
 import { z } from "zod";
 
@@ -44,10 +43,10 @@ router.post(
   async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthenticatedRequest).userId;
-      const body = req.body;
+      const { filename, contentType } = req.body;
 
       // Validate request body
-      if (!body.filename || !body.contentType) {
+      if (!filename || !contentType) {
         res.status(400).json({
           error: "Missing required fields: filename, contentType",
         });
@@ -72,12 +71,12 @@ router.post(
 
       // Return the token for client-side upload
       const jsonResponse = await handleUpload({
-        body,
+        body: req.body,
         request: req,
-        onBeforeGenerateToken: async () => {
+        onBeforeGenerateToken: async (pathname: string) => {
           return {
             allowedContentTypes: [
-              body.contentType,
+              contentType,
               "model/gltf+json",
               "model/gltf-binary",
               "application/octet-stream",
@@ -88,6 +87,7 @@ router.post(
             ],
             tokenPayload: JSON.stringify({
               userId,
+              pathname,
             }),
           };
         },
@@ -187,6 +187,12 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
 // Save Model Metadata After Blob Upload (authenticated)
 // ============================================================================
 
+interface BlobFileUrl {
+  url: string;
+  pathname: string;
+  size: number;
+}
+
 router.post("/blob", authenticate, async (req: Request, res: Response) => {
   try {
     const userId = (req as AuthenticatedRequest).userId;
@@ -222,7 +228,7 @@ router.post("/blob", authenticate, async (req: Request, res: Response) => {
     }
 
     // Find main model file
-    const mainFile = fileUrls.find((f: any) => {
+    const mainFile = (fileUrls as BlobFileUrl[]).find(f => {
       const ext = f.pathname?.split(".").pop()?.toLowerCase() || "";
       return ["gltf", "glb", "obj", "stl", "ply"].includes(ext);
     });
