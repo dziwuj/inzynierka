@@ -400,13 +400,16 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
               if (gltfJson.images) {
                 for (const image of gltfJson.images) {
                   if (image.uri && !image.uri.startsWith("data:")) {
-                    const originalUri = image.uri;
                     const basename = image.uri.split("/").pop();
                     const assetUrl =
                       assetBlobUrls.get(image.uri) ||
                       assetBlobUrls.get(basename);
                     if (assetUrl) {
                       image.uri = assetUrl;
+                    }
+                  }
+                }
+              }
 
               // Create new blob with modified GLTF
               modelBlob = new Blob([JSON.stringify(gltfJson)], {
@@ -494,7 +497,6 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
           if (gltfJson.buffers) {
             for (const buffer of gltfJson.buffers) {
               if (buffer.uri && !buffer.uri.startsWith("data:")) {
-                const originalUri = buffer.uri;
                 const basename = buffer.uri.split("/").pop();
                 const assetUrl =
                   assetBlobUrls.get(buffer.uri) || assetBlobUrls.get(basename);
@@ -509,7 +511,6 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
           if (gltfJson.images) {
             for (const image of gltfJson.images) {
               if (image.uri && !image.uri.startsWith("data:")) {
-                const originalUri = image.uri;
                 const basename = image.uri.split("/").pop();
                 const assetUrl =
                   assetBlobUrls.get(image.uri) || assetBlobUrls.get(basename);
@@ -710,7 +711,6 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
             if (gltfJson.buffers) {
               for (const buffer of gltfJson.buffers) {
                 if (buffer.uri && !buffer.uri.startsWith("data:")) {
-                  const originalUri = buffer.uri;
                   // Try exact match first, then basename
                   const basename = buffer.uri.split("/").pop();
                   const assetUrl =
@@ -726,15 +726,12 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
             if (gltfJson.images) {
               for (const image of gltfJson.images) {
                 if (image.uri && !image.uri.startsWith("data:")) {
-                  const originalUri = image.uri;
                   // Try exact match first, then basename
                   const basename = image.uri.split("/").pop();
                   const assetUrl =
                     assetBlobUrls.get(image.uri) || assetBlobUrls.get(basename);
                   if (assetUrl) {
                     image.uri = assetUrl;
-                  } else {
-                    console.warn(`Image URI not found: ${originalUri}`);
                   }
                 }
               }

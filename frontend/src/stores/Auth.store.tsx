@@ -55,7 +55,7 @@ export class AuthStore {
       if (!this.isOfflineMode) {
         await authApi.logout();
       }
-    } catch (error) {
+    } catch {
       // Silently handle logout errors
     } finally {
       runInAction(() => {
