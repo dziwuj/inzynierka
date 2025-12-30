@@ -61,6 +61,8 @@ export const modelsApi = {
         throw new Error("Not authenticated");
       }
 
+      const API_URL = import.meta.env.VITE_API_URL;
+
       // Upload files directly to Vercel Blob using client SDK
       const uploadedFiles = [];
 
@@ -68,11 +70,11 @@ export const modelsApi = {
         // Upload using Vercel Blob client SDK
         const blob = await upload(file.name, file, {
           access: "public",
-          handleUploadUrl: "/api/models/upload-token",
-          clientPayload: JSON.stringify({ filename: file.name }),
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          handleUploadUrl: `${API_URL}/models/upload-token`,
+          clientPayload: JSON.stringify({
+            filename: file.name,
+            token: token,
+          }),
         });
 
         uploadedFiles.push({
@@ -87,14 +89,11 @@ export const modelsApi = {
       if (thumbnail) {
         const blob = await upload("thumbnail.jpg", thumbnail, {
           access: "public",
-          handleUploadUrl: "/api/models/upload-token",
-          clientPayload: JSON.stringify({ filename: "thumbnail.jpg" }),
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-          handleUploadUrl: "/api/models/upload-token",
-          clientPayload: JSON.stringify({ filename: "thumbnail.jpg" }),
+          handleUploadUrl: `${API_URL}/models/upload-token`,
+          clientPayload: JSON.stringify({
+            filename: "thumbnail.jpg",
+            token: token,
+          }),
         });
 
         thumbnailUrl = blob.url;

@@ -42,16 +42,18 @@ const STORAGE_LIMIT_BYTES = 500 * 1024 * 1024;
 
 router.post("/upload-token", async (req: Request, res: Response) => {
   try {
-    // Extract userId from Authorization header manually
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      res.status(401).json({ error: "Unauthorized" });
+    // Extract token from clientPayload
+    const { filename, token } = req.body;
+
+    if (!filename || !token) {
+      res.status(400).json({
+        error: "Missing filename or token",
+      });
       return;
     }
 
-    const token = authHeader.substring(7);
+    // Verify JWT token
     let userId: string;
-
     try {
       const JWT_SECRET =
         process.env.JWT_SECRET || "your-secret-key-change-in-production";
@@ -59,15 +61,6 @@ router.post("/upload-token", async (req: Request, res: Response) => {
       userId = decoded.userId;
     } catch {
       res.status(401).json({ error: "Invalid token" });
-      return;
-    }
-
-    const { filename } = req.body;
-
-    if (!filename) {
-      res.status(400).json({
-        error: "Missing filename",
-      });
       return;
     }
 
