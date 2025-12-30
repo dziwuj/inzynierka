@@ -241,28 +241,46 @@ router.post("/blob", authenticate, async (req: Request, res: Response) => {
     const fileFormat =
       mainFile.pathname.split(".").pop()?.toUpperCase() || "UNKNOWN";
 
-    // Save to database
+    // Save model metadata to database
     const result = await pool.query(
-      `INSERT INTO models (user_id, name, file_format, file_url, total_size, thumbnail)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO models (user_id, name, file_format, total_size)
+       VALUES ($1, $2, $3, $4)
        RETURNING id, created_at, updated_at`,
-      [userId, name, fileFormat, mainFile.url, totalSize, thumbnailUrl || null],
+      [userId, name, fileFormat, totalSize],
     );
 
-    // Save asset files
+    const modelId = result.rows[0].id;
+
+    // Save all files to model_files table (storing URL in file_path as a workaround)
+    // Since model_files expects BYTEA for file_data, we'll store a placeholder
     for (const file of fileUrls) {
-      if (file.url !== mainFile.url) {
-        const fileName = file.pathname.split("/").pop() || file.pathname;
-        await pool.query(
-          `INSERT INTO model_assets (model_id, file_name, file_url, file_size)
-           VALUES ($1, $2, $3, $4)`,
-          [result.rows[0].id, fileName, file.url, file.size || 0],
-        );
-      }
+      const isMainFile = file.url === mainFile.url;
+
+      await pool.query(
+        `INSERT INTO model_files (model_id, file_path, file_data, file_size, is_main_file, mime_type)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          modelId,
+          file.url, // Store URL in file_path field
+          Buffer.from(""), // Empty buffer as placeholder
+          file.size || 0,
+          isMainFile,
+          "application/octet-stream",
+        ],
+      );
+    }
+
+    // Save thumbnail URL if provided (in a similar way)
+    if (thumbnailUrl) {
+      await pool.query(
+        `INSERT INTO model_files (model_id, file_path, file_data, file_size, is_main_file, mime_type)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [modelId, thumbnailUrl, Buffer.from(""), 0, false, "image/jpeg"],
+      );
     }
 
     res.json({
-      id: result.rows[0].id,
+      id: modelId,
       userId,
       name,
       fileName: `${name}.${fileFormat.toLowerCase()}`,
