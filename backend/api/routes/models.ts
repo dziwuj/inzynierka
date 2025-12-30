@@ -1,4 +1,4 @@
-import { put } from "@vercel/blob";
+import { del, list, put } from "@vercel/blob";
 import { handleUpload } from "@vercel/blob/client";
 import { Request, Response, Router } from "express";
 import jwt from "jsonwebtoken";
@@ -279,8 +279,13 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
         thumbnailUrl = `/models/${row.id}/thumbnail`;
       }
 
-      // Prefer blob_file_url (full URL) over legacy download endpoint
-      const fileUrl = row.blob_file_url || `/api/models/${row.id}/download`;
+      // Use proxy endpoint for blob files to avoid CORS issues
+      let fileUrl;
+      if (row.blob_file_url) {
+        fileUrl = `/api/models/${row.id}/blob-proxy`;
+      } else {
+        fileUrl = `/api/models/${row.id}/download`;
+      }
 
       return {
         id: row.id,
@@ -752,6 +757,75 @@ router.get(
 );
 
 // ============================================================================
+// Proxy Blob URL (authenticated) - Handles CORS for Vercel Blob files
+// ============================================================================
+
+router.get(
+  "/:id/blob-proxy",
+  authenticate,
+  validate(
+    z.object({
+      params: z.object({ id: UuidSchema }),
+    }),
+  ),
+  async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const userId = (req as AuthenticatedRequest).userId;
+
+      // Get the blob URL from database
+      const result = await pool.query(
+        `SELECT mf.file_path, mf.mime_type, m.name, m.file_format
+         FROM model_files mf
+         JOIN models m ON mf.model_id = m.id
+         WHERE m.id = $1 AND m.user_id = $2 AND mf.is_main_file = TRUE`,
+        [id, userId],
+      );
+
+      if (result.rows.length === 0) {
+        res.status(404).json({
+          error: "Model file not found",
+        });
+        return;
+      }
+
+      const blobUrl = result.rows[0].file_path;
+      const mimeType = result.rows[0].mime_type || "application/octet-stream";
+      const fileName = `${result.rows[0].name}.${result.rows[0].file_format}`;
+
+      // If it's not a blob URL, fall back to regular download
+      if (!blobUrl.startsWith("https://")) {
+        res.redirect(`/api/models/${id}/download`);
+        return;
+      }
+
+      // Fetch from Vercel Blob and stream to client
+      const blobResponse = await fetch(blobUrl);
+
+      if (!blobResponse.ok) {
+        throw new Error(`Failed to fetch blob: ${blobResponse.status}`);
+      }
+
+      // Set appropriate headers
+      res.setHeader("Content-Type", mimeType);
+      res.setHeader("Content-Disposition", `inline; filename="${fileName}"`);
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+
+      // Stream the blob content
+      const buffer = await blobResponse.arrayBuffer();
+      res.send(Buffer.from(buffer));
+    } catch (error) {
+      console.error("Blob proxy error:", error);
+      res.status(500).json({
+        error: "Internal server error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  },
+);
+
+// ============================================================================
 // Get Model Thumbnail (authenticated)
 // ============================================================================
 
@@ -936,6 +1010,18 @@ router.delete(
       const { id } = req.params;
       const userId = (req as AuthenticatedRequest).userId;
 
+      // First, get all blob URLs to delete from Vercel Blob Storage
+      const filesResult = await pool.query(
+        `SELECT mf.file_path 
+         FROM model_files mf
+         JOIN models m ON mf.model_id = m.id
+         WHERE m.id = $1 AND m.user_id = $2 AND mf.file_path LIKE 'https://%'`,
+        [id, userId],
+      );
+
+      const blobUrls = filesResult.rows.map(row => row.file_path);
+
+      // Delete from database (CASCADE will delete model_files)
       const result = await pool.query(
         "DELETE FROM models WHERE id = $1 AND user_id = $2 RETURNING id",
         [id, userId],
@@ -950,6 +1036,21 @@ router.delete(
         return;
       }
 
+      // Delete from Vercel Blob Storage in background (don't block response)
+      if (blobUrls.length > 0) {
+        const token = process.env.BLOB_READ_WRITE_TOKEN;
+        if (token) {
+          // Delete blobs asynchronously
+          Promise.all(
+            blobUrls.map(url =>
+              del(url, { token }).catch(err =>
+                console.error(`Failed to delete blob ${url}:`, err),
+              ),
+            ),
+          ).catch(err => console.error("Error deleting blobs:", err));
+        }
+      }
+
       res.json(
         SuccessResponseSchema.parse({
           message: "Model deleted successfully",
@@ -962,6 +1063,78 @@ router.delete(
           error: "Internal server error",
         }),
       );
+    }
+  },
+);
+
+// ============================================================================
+// Cleanup Orphaned Blobs (authenticated - admin recommended)
+// ============================================================================
+
+router.post(
+  "/cleanup-orphaned-blobs",
+  authenticate,
+  async (req: Request, res: Response) => {
+    try {
+      const token = process.env.BLOB_READ_WRITE_TOKEN;
+      if (!token) {
+        res.status(500).json({
+          error: "Blob storage not configured",
+        });
+        return;
+      }
+
+      // Get all blob URLs from storage
+      const { blobs } = await list({ token });
+      const storageUrls = blobs.map(blob => blob.url);
+
+      // Get all blob URLs from database
+      const dbResult = await pool.query(
+        `SELECT DISTINCT file_path 
+         FROM model_files 
+         WHERE file_path LIKE 'https://%'`,
+      );
+      const dbUrls = new Set(dbResult.rows.map(row => row.file_path));
+
+      // Find orphaned blobs (in storage but not in DB)
+      const orphanedUrls = storageUrls.filter(url => !dbUrls.has(url));
+
+      if (orphanedUrls.length === 0) {
+        res.json({
+          message: "No orphaned blobs found",
+          deletedCount: 0,
+          totalBlobs: storageUrls.length,
+          usedBlobs: dbUrls.size,
+        });
+        return;
+      }
+
+      // Delete orphaned blobs
+      const deleteResults = await Promise.allSettled(
+        orphanedUrls.map(url => del(url, { token })),
+      );
+
+      const successCount = deleteResults.filter(
+        r => r.status === "fulfilled",
+      ).length;
+      const failCount = deleteResults.filter(
+        r => r.status === "rejected",
+      ).length;
+
+      res.json({
+        message: `Cleanup completed: ${successCount} orphaned blobs deleted`,
+        deletedCount: successCount,
+        failedCount: failCount,
+        totalBlobs: storageUrls.length,
+        usedBlobs: dbUrls.size,
+        orphanedUrls: orphanedUrls.slice(0, 10), // Return first 10 for reference
+      });
+    } catch (error) {
+      console.error("Cleanup orphaned blobs error:", error);
+      res.status(500).json({
+        error: "Internal server error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
     }
   },
 );
