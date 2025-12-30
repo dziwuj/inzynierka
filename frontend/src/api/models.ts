@@ -1,5 +1,6 @@
-import client from "./client";
 import { upload } from "@vercel/blob/client";
+
+import client from "./client";
 
 export interface Model {
   id: string;

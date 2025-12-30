@@ -1,4 +1,5 @@
 import { put } from "@vercel/blob";
+import { handleUpload } from "@vercel/blob/client";
 import { Request, Response, Router } from "express";
 import multer from "multer";
 import { z } from "zod";
