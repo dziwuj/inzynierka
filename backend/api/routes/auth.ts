@@ -44,18 +44,35 @@ router.post(
 
       // Check if user already exists
       const existingUser = await pool.query(
-        "SELECT id, email, password_hash FROM users WHERE username = $1 OR email = $2",
+        "SELECT id, email, username, password_hash FROM users WHERE username = $1 OR email = $2",
         [username, email],
       );
 
       if (existingUser.rows.length > 0) {
         const user = existingUser.rows[0];
 
-        // Check if this is an OAuth-only account (no password set)
+        // Check if this is an OAuth-only account (no password set) with matching email
         if (
           user.email === email &&
           (!user.password_hash || user.password_hash === "")
         ) {
+          // Check if the username is already taken by someone else
+          if (user.username !== username) {
+            const usernameCheck = await pool.query(
+              "SELECT id FROM users WHERE username = $1 AND id != $2",
+              [username, user.id],
+            );
+
+            if (usernameCheck.rows.length > 0) {
+              res.status(400).json(
+                ErrorResponseSchema.parse({
+                  error: "Username is already taken",
+                }),
+              );
+              return;
+            }
+          }
+
           // Hash password
           const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -65,10 +82,16 @@ router.post(
             Date.now() + 24 * 60 * 60 * 1000,
           ); // 24 hours
 
-          // Update password and set email as unverified, add verification token
+          // Update username, password and set email as unverified, add verification token
           await pool.query(
-            "UPDATE users SET password_hash = $1, email_verified = false, email_verification_token = $2, email_verification_expires_at = $3 WHERE id = $4",
-            [hashedPassword, verificationToken, verificationExpiresAt, user.id],
+            "UPDATE users SET username = $1, password_hash = $2, email_verified = false, email_verification_token = $3, email_verification_expires_at = $4 WHERE id = $5",
+            [
+              username,
+              hashedPassword,
+              verificationToken,
+              verificationExpiresAt,
+              user.id,
+            ],
           );
 
           // Send verification email
