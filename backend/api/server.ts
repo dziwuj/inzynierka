@@ -35,15 +35,15 @@ if (process.env.FRONTEND_URL) {
 app.use((req, res, next) => {
   const origin = req.headers.origin;
 
+  // Log for debugging
+  console.log(`[CORS] ${req.method} ${req.path} from origin: ${origin}`);
+
   // Always set CORS headers
-  if (origin && allowedOrigins.includes(origin)) {
+  if (origin) {
     res.setHeader("Access-Control-Allow-Origin", origin);
-  } else if (origin) {
-    // Allow any origin as fallback
-    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
   }
 
-  res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader(
     "Access-Control-Allow-Methods",
     "GET, POST, PUT, DELETE, PATCH, OPTIONS",
@@ -60,7 +60,8 @@ app.use((req, res, next) => {
 
   // Handle preflight immediately
   if (req.method === "OPTIONS") {
-    res.status(204).send("");
+    console.log(`[CORS] Handling OPTIONS preflight for ${req.path}`);
+    res.status(204).end();
     return;
   }
 
@@ -213,6 +214,14 @@ app.use(
     next: express.NextFunction,
   ) => {
     console.error("Error:", err);
+
+    // Ensure CORS headers on error responses
+    const origin = req.headers.origin;
+    if (origin) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+    }
+
     res.status(500).json({
       error: "Internal server error",
       message: err.message,
