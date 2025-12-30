@@ -255,27 +255,46 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
     const userId = (req as AuthenticatedRequest).userId;
 
     const result = await pool.query(
-      `SELECT id, user_id, name, file_format, total_size, 
-              created_at, updated_at, thumbnail 
-       FROM models 
-       WHERE user_id = $1 
-       ORDER BY created_at DESC`,
+      `SELECT m.id, m.user_id, m.name, m.file_format, m.total_size, 
+              m.created_at, m.updated_at, m.thumbnail,
+              (SELECT mf.file_path FROM model_files mf 
+               WHERE mf.model_id = m.id AND mf.mime_type = 'image/jpeg' 
+               LIMIT 1) as blob_thumbnail_url,
+              (SELECT mf.file_path FROM model_files mf 
+               WHERE mf.model_id = m.id AND mf.is_main_file = TRUE 
+               LIMIT 1) as blob_file_url
+       FROM models m
+       WHERE m.user_id = $1 
+       ORDER BY m.created_at DESC`,
       [userId],
     );
 
     // Transform to match frontend Model interface
-    const models = result.rows.map(row => ({
-      id: row.id,
-      userId: row.user_id,
-      name: row.name,
-      fileName: `${row.name}.${row.file_format.toLowerCase()}`,
-      fileSize: row.total_size,
-      fileFormat: row.file_format.toUpperCase(),
-      fileUrl: `/api/models/${row.id}/download`,
-      thumbnailUrl: row.thumbnail ? `/models/${row.id}/thumbnail` : null,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    }));
+    const models = result.rows.map(row => {
+      // Prefer blob_thumbnail_url (full URL) over legacy thumbnail (BYTEA)
+      let thumbnailUrl = null;
+      if (row.blob_thumbnail_url) {
+        thumbnailUrl = row.blob_thumbnail_url;
+      } else if (row.thumbnail) {
+        thumbnailUrl = `/models/${row.id}/thumbnail`;
+      }
+
+      // Prefer blob_file_url (full URL) over legacy download endpoint
+      const fileUrl = row.blob_file_url || `/api/models/${row.id}/download`;
+
+      return {
+        id: row.id,
+        userId: row.user_id,
+        name: row.name,
+        fileName: `${row.name}.${row.file_format.toLowerCase()}`,
+        fileSize: row.total_size,
+        fileFormat: row.file_format.toUpperCase(),
+        fileUrl,
+        thumbnailUrl,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      };
+    });
 
     res.json(models);
   } catch (error) {
