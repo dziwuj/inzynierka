@@ -338,10 +338,10 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
 
           try {
             let modelBlob = await fetch(model.fileUrl).then(res => res.blob());
+            const newAssetMap = new Map<string, string>();
 
             // If there are asset files (textures, buffers, etc.), create blob URLs for them
             if (model.assetData) {
-              const newAssetMap = new Map<string, string>();
               for (const [assetFileName, assetDataUrl] of Object.entries(
                 model.assetData as Record<string, string>,
               )) {
@@ -382,15 +382,11 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
               if (gltfJson.buffers) {
                 for (const buffer of gltfJson.buffers) {
                   if (buffer.uri && !buffer.uri.startsWith("data:")) {
-                    const originalUri = buffer.uri;
                     const basename = buffer.uri.split("/").pop();
                     const assetUrl =
-                      assetBlobUrls.get(buffer.uri) ||
-                      assetBlobUrls.get(basename);
+                      newAssetMap.get(buffer.uri) || newAssetMap.get(basename);
                     if (assetUrl) {
                       buffer.uri = assetUrl;
-                    } else {
-                      console.warn(`Buffer URI not found: ${originalUri}`);
                     }
                   }
                 }
@@ -402,8 +398,7 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
                   if (image.uri && !image.uri.startsWith("data:")) {
                     const basename = image.uri.split("/").pop();
                     const assetUrl =
-                      assetBlobUrls.get(image.uri) ||
-                      assetBlobUrls.get(basename);
+                      newAssetMap.get(image.uri) || newAssetMap.get(basename);
                     if (assetUrl) {
                       image.uri = assetUrl;
                     }
@@ -460,35 +455,26 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
       try {
         let modelBlob = await fetch(modelData).then(res => res.blob());
 
-        // If there are asset files (textures, buffers, etc.), create blob URLs for them
-        if (assetData) {
+        // For GLTF specifically, we need to modify the JSON to use blob URLs
+        if (assetData && name?.toLowerCase().endsWith(".gltf")) {
+          // Build complete asset map first
+          const completeAssetMap = new Map<string, string>();
           for (const [assetFileName, assetDataUrl] of Object.entries(
             assetData as Record<string, string>,
           )) {
-            // Skip the main model file itself
             if (assetFileName === name) continue;
-
             const assetBlob = await fetch(assetDataUrl).then(res => res.blob());
             const assetBlobUrl = URL.createObjectURL(assetBlob);
-
-            // Store with full filename
             const basename = assetFileName.split("/").pop() || assetFileName;
             const baseOnly = assetFileName.split("\\").pop() || assetFileName;
-
-            setAssetBlobUrls(prev => {
-              const newMap = new Map(prev);
-              newMap.set(assetFileName, assetBlobUrl);
-              newMap.set(basename, assetBlobUrl);
-              if (baseOnly !== basename) {
-                newMap.set(baseOnly, assetBlobUrl);
-              }
-              return newMap;
-            });
+            completeAssetMap.set(assetFileName, assetBlobUrl);
+            completeAssetMap.set(basename, assetBlobUrl);
+            if (baseOnly !== basename) {
+              completeAssetMap.set(baseOnly, assetBlobUrl);
+            }
           }
-        }
+          setAssetBlobUrls(completeAssetMap);
 
-        // For GLTF specifically, we need to modify the JSON to use blob URLs
-        if (assetData && name?.toLowerCase().endsWith(".gltf")) {
           // Modify GLTF JSON to use blob URLs
           const gltfText = await modelBlob.text();
           const gltfJson = JSON.parse(gltfText);
@@ -499,7 +485,8 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
               if (buffer.uri && !buffer.uri.startsWith("data:")) {
                 const basename = buffer.uri.split("/").pop();
                 const assetUrl =
-                  assetBlobUrls.get(buffer.uri) || assetBlobUrls.get(basename);
+                  completeAssetMap.get(buffer.uri) ||
+                  completeAssetMap.get(basename);
                 if (assetUrl) {
                   buffer.uri = assetUrl;
                 }
@@ -513,7 +500,8 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
               if (image.uri && !image.uri.startsWith("data:")) {
                 const basename = image.uri.split("/").pop();
                 const assetUrl =
-                  assetBlobUrls.get(image.uri) || assetBlobUrls.get(basename);
+                  completeAssetMap.get(image.uri) ||
+                  completeAssetMap.get(basename);
                 if (assetUrl) {
                   image.uri = assetUrl;
                 }
@@ -572,21 +560,18 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
           // If there's asset data (multi-file GLTF model), process it
           if (model.assetData && model.fileFormat.toLowerCase() === "gltf") {
             // Create blob URLs for all asset files
+            const assetMap = new Map<string, string>();
             for (const [fileName, dataUrl] of Object.entries(model.assetData)) {
               if (fileName !== model.fileName) {
                 const assetResponse = await fetch(dataUrl);
                 const assetBlob = await assetResponse.blob();
                 const assetBlobUrl = URL.createObjectURL(assetBlob);
                 const basename = fileName.split("/").pop() || fileName;
-
-                setAssetBlobUrls(prev => {
-                  const newMap = new Map(prev);
-                  newMap.set(fileName, assetBlobUrl);
-                  newMap.set(basename, assetBlobUrl);
-                  return newMap;
-                });
+                assetMap.set(fileName, assetBlobUrl);
+                assetMap.set(basename, assetBlobUrl);
               }
             }
+            setAssetBlobUrls(assetMap);
 
             // Modify GLTF JSON to use blob URLs
             const gltfText = await blob.text();
@@ -598,8 +583,7 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
                 if (buffer.uri && !buffer.uri.startsWith("data:")) {
                   const basename = buffer.uri.split("/").pop();
                   const assetUrl =
-                    assetBlobUrls.get(buffer.uri) ||
-                    assetBlobUrls.get(basename);
+                    assetMap.get(buffer.uri) || assetMap.get(basename);
                   if (assetUrl) {
                     buffer.uri = assetUrl;
                   }
@@ -613,7 +597,7 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
                 if (image.uri && !image.uri.startsWith("data:")) {
                   const basename = image.uri.split("/").pop();
                   const assetUrl =
-                    assetBlobUrls.get(image.uri) || assetBlobUrls.get(basename);
+                    assetMap.get(image.uri) || assetMap.get(basename);
                   if (assetUrl) {
                     image.uri = assetUrl;
                   }
@@ -648,6 +632,7 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
           }
 
           let modelBlob = await modelResponse.blob();
+          const newAssetMap = new Map<string, string>();
 
           // Fetch associated assets (textures, buffers, etc.) for all supported formats
           const assetsResponse = await fetch(`/api/models/${id}/assets`, {
@@ -660,7 +645,6 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
             const assets = await assetsResponse.json();
 
             // Create blob URLs for all assets (works for GLTF, OBJ, etc.)
-            const newAssetMap = new Map<string, string>();
             for (const asset of assets) {
               const assetResponse = await fetch(asset.downloadUrl, {
                 headers: {
@@ -714,8 +698,7 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
                   // Try exact match first, then basename
                   const basename = buffer.uri.split("/").pop();
                   const assetUrl =
-                    assetBlobUrls.get(buffer.uri) ||
-                    assetBlobUrls.get(basename);
+                    newAssetMap.get(buffer.uri) || newAssetMap.get(basename);
                   if (assetUrl) {
                     buffer.uri = assetUrl;
                   }
@@ -729,7 +712,7 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
                   // Try exact match first, then basename
                   const basename = image.uri.split("/").pop();
                   const assetUrl =
-                    assetBlobUrls.get(image.uri) || assetBlobUrls.get(basename);
+                    newAssetMap.get(image.uri) || newAssetMap.get(basename);
                   if (assetUrl) {
                     image.uri = assetUrl;
                   }
