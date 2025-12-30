@@ -42,12 +42,14 @@ const STORAGE_LIMIT_BYTES = 500 * 1024 * 1024;
 
 router.post("/upload-token", async (req: Request, res: Response) => {
   try {
-    // Extract token from clientPayload
-    const { filename, token } = req.body;
+    // handleUpload expects specific body structure from Vercel Blob client
+    // The clientPayload will be in req.body.payload
+    const clientPayload = req.body.payload ? JSON.parse(req.body.payload) : {};
+    const { filename, token } = clientPayload;
 
     if (!filename || !token) {
       res.status(400).json({
-        error: "Missing filename or token",
+        error: "Missing filename or token in clientPayload",
       });
       return;
     }
