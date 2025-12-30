@@ -32,15 +32,22 @@ const ModelCard = ({ model, onDelete }: ModelCardProps) => {
     const fetchThumbnail = async () => {
       try {
         const token = rootStore.authStore.accessToken;
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL}${model.thumbnailUrl}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-            credentials: "include",
-          },
-        );
+        const thumbnailUrl = model.thumbnailUrl!; // Assert non-null since we checked above
+
+        // Check if thumbnailUrl is already a complete URL (from Vercel Blob)
+        const isExternalUrl = thumbnailUrl.startsWith("http");
+        const thumbnailFetchUrl = isExternalUrl
+          ? thumbnailUrl
+          : `${import.meta.env.VITE_API_URL}${thumbnailUrl}`;
+
+        const response = await fetch(thumbnailFetchUrl, {
+          headers: isExternalUrl
+            ? {} // No auth needed for public Blob URLs
+            : {
+                Authorization: `Bearer ${token}`,
+              },
+          credentials: isExternalUrl ? "omit" : "include",
+        });
 
         if (!response.ok) {
           throw new Error(`Failed to fetch thumbnail: ${response.status}`);
@@ -65,8 +72,6 @@ const ModelCard = ({ model, onDelete }: ModelCardProps) => {
         URL.revokeObjectURL(thumbnailBlobUrl);
       }
     };
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [model.thumbnailUrl]);
 
   const formatFileSize = (bytes: number): string => {

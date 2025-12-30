@@ -124,7 +124,7 @@ router.post("/upload-token", async (req: Request, res: Response) => {
             userId,
             filename,
           }),
-          addRandomSuffix: false,
+          addRandomSuffix: true, // Add random suffix to avoid conflicts
           pathname: uniquePathname,
         };
       },
