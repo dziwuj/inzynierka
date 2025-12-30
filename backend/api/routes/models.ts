@@ -1,3 +1,4 @@
+import { put, PutBlobResult } from "@vercel/blob";
 import { Request, Response, Router } from "express";
 import multer from "multer";
 import { z } from "zod";
@@ -73,17 +74,34 @@ router.post(
       const randomString = Math.random().toString(36).substring(2, 15);
       const pathname = `models/${userId}/${timestamp}-${randomString}-${filename}`;
 
-      // Create a presigned URL using createPutMethod
+      // Create a client upload token using Vercel Blob SDK
       const token = process.env.BLOB_READ_WRITE_TOKEN;
       if (!token) {
         throw new Error("BLOB_READ_WRITE_TOKEN not configured");
       }
 
-      // Generate the upload URL
-      const uploadUrl = `https://${process.env.VERCEL_BLOB_STORE_ID || "blob"}.public.blob.vercel-storage.com/${pathname}?token=${token}`;
+      // Use the Blob SDK to get a proper upload URL with client access
+      const blob = await put(pathname, Buffer.from(""), {
+        access: "public",
+        token,
+        addRandomSuffix: false,
+      });
+
+      // The blob.url is the final URL, but we need to generate a client upload URL
+      // For client-side uploads, we need to use the Vercel Blob client upload approach
+      const blobUrl = blob.url.replace(/^https:\/\//, "").split("/")[0];
+      const uploadUrl = `https://${blobUrl}/${pathname}`;
+
+      // Delete the placeholder blob
+      await fetch(blob.url, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       res.json({
-        url: uploadUrl,
+        url: `${uploadUrl}?token=${token}`,
         pathname,
       });
     } catch (error) {
