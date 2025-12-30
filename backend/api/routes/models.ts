@@ -1,4 +1,3 @@
-import { handleUpload } from "@vercel/blob/client";
 import { Request, Response, Router } from "express";
 import multer from "multer";
 import { z } from "zod";
@@ -69,34 +68,24 @@ router.post(
         return;
       }
 
-      // Return the token for client-side upload
-      const jsonResponse = await handleUpload({
-        body: req.body,
-        request: req,
-        onBeforeGenerateToken: async (pathname: string) => {
-          return {
-            allowedContentTypes: [
-              contentType,
-              "model/gltf+json",
-              "model/gltf-binary",
-              "application/octet-stream",
-              "image/png",
-              "image/jpeg",
-              "image/webp",
-              "text/plain",
-            ],
-            tokenPayload: JSON.stringify({
-              userId,
-              pathname,
-            }),
-          };
-        },
-        onUploadCompleted: async () => {
-          // No-op, we'll handle completion in a separate endpoint
-        },
-      });
+      // Generate a unique pathname for the file
+      const timestamp = Date.now();
+      const randomString = Math.random().toString(36).substring(2, 15);
+      const pathname = `models/${userId}/${timestamp}-${randomString}-${filename}`;
 
-      res.json(jsonResponse);
+      // Create a presigned URL using createPutMethod
+      const token = process.env.BLOB_READ_WRITE_TOKEN;
+      if (!token) {
+        throw new Error("BLOB_READ_WRITE_TOKEN not configured");
+      }
+
+      // Generate the upload URL
+      const uploadUrl = `https://${process.env.VERCEL_BLOB_STORE_ID || "blob"}.public.blob.vercel-storage.com/${pathname}?token=${token}`;
+
+      res.json({
+        url: uploadUrl,
+        pathname,
+      });
     } catch (error) {
       console.error("Generate upload URL error:", error);
       res.status(500).json({
