@@ -1,4 +1,6 @@
 import { Request, Response, Router } from "express";
+import { handleUpload } from "@vercel/blob/client";
+import { put } from "@vercel/blob";
 import multer from "multer";
 import { z } from "zod";
 
@@ -24,13 +26,86 @@ const router = Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100MB per file
-    files: 50, // Max 50 files
+    fileSize: 4 * 1024 * 1024, // 4MB per file (Vercel serverless limit)
+    files: 20, // Max 20 files
   },
 });
 
 // Storage limit per user (500MB)
 const STORAGE_LIMIT_BYTES = 500 * 1024 * 1024;
+
+// ============================================================================
+// Generate Upload URL for Vercel Blob (authenticated)
+// ============================================================================
+
+router.post(
+  "/upload-url",
+  authenticate,
+  async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthenticatedRequest).userId;
+      const body = req.body;
+
+      // Validate request body
+      if (!body.filename || !body.contentType) {
+        res.status(400).json({
+          error: "Missing required fields: filename, contentType",
+        });
+        return;
+      }
+
+      // Check storage limit
+      const storageResult = await pool.query(
+        `SELECT COALESCE(SUM(total_size), 0) as used_bytes 
+         FROM models WHERE user_id = $1`,
+        [userId],
+      );
+
+      const usedBytes = parseInt(storageResult.rows[0].used_bytes);
+      if (usedBytes >= STORAGE_LIMIT_BYTES) {
+        res.status(413).json({
+          error: "Storage limit exceeded",
+          message: `You have used ${(usedBytes / (1024 * 1024)).toFixed(2)}MB of ${STORAGE_LIMIT_BYTES / (1024 * 1024)}MB`,
+        });
+        return;
+      }
+
+      // Return the token for client-side upload
+      const jsonResponse = await handleUpload({
+        body,
+        request: req,
+        onBeforeGenerateToken: async () => {
+          return {
+            allowedContentTypes: [
+              body.contentType,
+              "model/gltf+json",
+              "model/gltf-binary",
+              "application/octet-stream",
+              "image/png",
+              "image/jpeg",
+              "image/webp",
+              "text/plain",
+            ],
+            tokenPayload: JSON.stringify({
+              userId,
+            }),
+          };
+        },
+        onUploadCompleted: async () => {
+          // No-op, we'll handle completion in a separate endpoint
+        },
+      });
+
+      res.json(jsonResponse);
+    } catch (error) {
+      console.error("Generate upload URL error:", error);
+      res.status(500).json({
+        error: "Internal server error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  },
+);
 
 // ============================================================================
 // Get Storage Info (authenticated)
@@ -109,7 +184,102 @@ router.get("/", authenticate, async (req: Request, res: Response) => {
 });
 
 // ============================================================================
-// Upload Model (authenticated)
+// Save Model Metadata After Blob Upload (authenticated)
+// ============================================================================
+
+router.post("/blob", authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as AuthenticatedRequest).userId;
+    const { name, fileUrls, thumbnailUrl, totalSize } = req.body;
+
+    if (
+      !name ||
+      !fileUrls ||
+      !Array.isArray(fileUrls) ||
+      fileUrls.length === 0
+    ) {
+      res.status(400).json({
+        error: "Missing required fields",
+        message: "name, fileUrls (array) are required",
+      });
+      return;
+    }
+
+    // Check storage limit
+    const storageResult = await pool.query(
+      `SELECT COALESCE(SUM(total_size), 0) as used_bytes 
+       FROM models WHERE user_id = $1`,
+      [userId],
+    );
+
+    const usedBytes = parseInt(storageResult.rows[0].used_bytes);
+    if (usedBytes + totalSize > STORAGE_LIMIT_BYTES) {
+      res.status(413).json({
+        error: "Storage limit exceeded",
+        message: `Adding this model would exceed your ${STORAGE_LIMIT_BYTES / (1024 * 1024)}MB limit`,
+      });
+      return;
+    }
+
+    // Find main model file
+    const mainFile = fileUrls.find((f: any) => {
+      const ext = f.pathname?.split(".").pop()?.toLowerCase() || "";
+      return ["gltf", "glb", "obj", "stl", "ply"].includes(ext);
+    });
+
+    if (!mainFile) {
+      res.status(400).json({
+        error: "No valid model file found",
+      });
+      return;
+    }
+
+    const fileFormat =
+      mainFile.pathname.split(".").pop()?.toUpperCase() || "UNKNOWN";
+
+    // Save to database
+    const result = await pool.query(
+      `INSERT INTO models (user_id, name, file_format, file_url, total_size, thumbnail)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, created_at, updated_at`,
+      [userId, name, fileFormat, mainFile.url, totalSize, thumbnailUrl || null],
+    );
+
+    // Save asset files
+    for (const file of fileUrls) {
+      if (file.url !== mainFile.url) {
+        const fileName = file.pathname.split("/").pop() || file.pathname;
+        await pool.query(
+          `INSERT INTO model_assets (model_id, file_name, file_url, file_size)
+           VALUES ($1, $2, $3, $4)`,
+          [result.rows[0].id, fileName, file.url, file.size || 0],
+        );
+      }
+    }
+
+    res.json({
+      id: result.rows[0].id,
+      userId,
+      name,
+      fileName: `${name}.${fileFormat.toLowerCase()}`,
+      fileSize: totalSize,
+      fileFormat,
+      fileUrl: mainFile.url,
+      thumbnailUrl: thumbnailUrl || null,
+      createdAt: result.rows[0].created_at,
+      updatedAt: result.rows[0].updated_at,
+    });
+  } catch (error) {
+    console.error("Save blob model error:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+// ============================================================================
+// Upload Model (authenticated) - Legacy endpoint for small files
 // ============================================================================
 
 router.post(

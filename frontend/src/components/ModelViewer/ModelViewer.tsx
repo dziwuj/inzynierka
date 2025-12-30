@@ -754,7 +754,6 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
       }
       assetBlobUrls.forEach(url => URL.revokeObjectURL(url));
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isOffline,
     location.state,
