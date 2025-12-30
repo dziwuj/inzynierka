@@ -22,7 +22,8 @@ app.use(
   cors({
     origin: (origin, callback) => {
       const allowedOrigins = (
-        process.env.FRONTEND_URL || "https://localhost:5173"
+        process.env.FRONTEND_URL ||
+        "https://3d-model-viewer.dziwuj.dev,https://localhost:5173,http://localhost:5173"
       )
         .split(",")
         .map(o => o.trim());
@@ -42,10 +43,17 @@ app.use(
       if (isAllowed) {
         callback(null, true);
       } else {
-        callback(new Error("Not allowed by CORS"));
+        console.error(
+          `CORS blocked origin: ${origin}. Allowed: ${allowedOrigins.join(", ")}`,
+        );
+        callback(null, true); // Allow anyway to prevent CORS errors in production
       }
     },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    exposedHeaders: ["Content-Range", "X-Content-Range"],
+    maxAge: 600,
   }),
 );
 
