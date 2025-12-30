@@ -43,8 +43,8 @@ const STORAGE_LIMIT_BYTES = 500 * 1024 * 1024;
 router.post("/upload-token", async (req: Request, res: Response) => {
   try {
     // handleUpload expects specific body structure from Vercel Blob client
-    // The clientPayload will be in req.body.payload
-    const clientPayload = req.body.payload ? JSON.parse(req.body.payload) : {};
+    // The clientPayload will be in req.body.payload (already parsed as object)
+    const clientPayload = req.body.payload || {};
     const { filename, token } = clientPayload;
 
     if (!filename || !token) {
