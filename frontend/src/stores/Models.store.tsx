@@ -100,17 +100,6 @@ export class ModelsStore {
       runInAction(() => {
         // Replace any existing model (only one at a time)
         this.models = [newModel];
-        console.log(
-          "[ModelsStore] Created offline model:",
-          newModel.id,
-          "with",
-          Object.keys(newModel.assetData || {}).length,
-          "assets",
-        );
-        console.log(
-          "[ModelsStore] Asset keys:",
-          Object.keys(newModel.assetData || {}),
-        );
         this.storageInfo = {
           usedBytes: fileSize,
           maxBytes: 500 * 1024 * 1024,

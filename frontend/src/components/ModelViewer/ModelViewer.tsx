@@ -322,17 +322,13 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
   const headerRef = useRef<HTMLDivElement>(null);
 
   const isOffline = mode === "offline";
-  console.log("[ModelViewer] mode:", mode, "isOffline:", isOffline, "id:", id);
 
   useEffect(() => {
     const loadOfflineModel = async () => {
       setAssetsLoaded(false); // Reset on new load
-      console.log("[ModelViewer] loadOfflineModel called, id:", id);
       // Try to load from store first using URL param
       if (id) {
-        console.log("[ModelViewer] Looking for model with ID:", id);
         const model = modelsStore.models.find(m => m.id === id);
-        console.log("[ModelViewer] Found model:", model);
         if (model) {
           setModelName(model.name);
           const extension = model.fileName.toLowerCase().split(".").pop() || "";
@@ -343,11 +339,8 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
           try {
             let modelBlob = await fetch(model.fileUrl).then(res => res.blob());
 
-            console.log("[ModelViewer OFFLINE] Asset data:", model.assetData);
-
             // If there are asset files (textures, buffers, etc.), create blob URLs for them
             if (model.assetData) {
-              console.log("[ModelViewer OFFLINE] Processing assets...");
               const newAssetMap = new Map<string, string>();
               for (const [assetFileName, assetDataUrl] of Object.entries(
                 model.assetData as Record<string, string>,
@@ -372,18 +365,8 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
                 if (baseOnly !== basename) {
                   newAssetMap.set(baseOnly, assetBlobUrl);
                 }
-
-                console.log(
-                  `[ModelViewer OFFLINE] Stored asset: ${basename} -> ${assetBlobUrl}`,
-                );
               }
               setAssetBlobUrls(newAssetMap);
-              console.log(
-                "[ModelViewer OFFLINE] Asset map keys:",
-                Array.from(newAssetMap.keys()),
-              );
-            } else {
-              console.warn("[ModelViewer OFFLINE] No asset data provided");
             }
 
             // For GLTF specifically, we need to modify the JSON to use blob URLs
@@ -424,12 +407,6 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
                       assetBlobUrls.get(basename);
                     if (assetUrl) {
                       image.uri = assetUrl;
-                    } else {
-                      console.warn(`Image URI not found: ${originalUri}`);
-                    }
-                  }
-                }
-              }
 
               // Create new blob with modified GLTF
               modelBlob = new Blob([JSON.stringify(gltfJson)], {
@@ -480,11 +457,8 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
       try {
         let modelBlob = await fetch(modelData).then(res => res.blob());
 
-        console.log("[ModelViewer OFFLINE] Asset data:", assetData);
-
         // If there are asset files (textures, buffers, etc.), create blob URLs for them
         if (assetData) {
-          console.log("[ModelViewer OFFLINE] Processing assets...");
           for (const [assetFileName, assetDataUrl] of Object.entries(
             assetData as Record<string, string>,
           )) {
@@ -507,20 +481,7 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
               }
               return newMap;
             });
-
-            console.log(
-              `[ModelViewer OFFLINE] Stored asset: ${basename} -> ${assetBlobUrl}`,
-            );
           }
-          setAssetBlobUrls(prev => {
-            console.log(
-              "[ModelViewer OFFLINE] Asset map keys:",
-              Array.from(prev.keys()),
-            );
-            return prev;
-          });
-        } else {
-          console.warn("[ModelViewer OFFLINE] No asset data provided");
         }
 
         // For GLTF specifically, we need to modify the JSON to use blob URLs
@@ -539,8 +500,6 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
                   assetBlobUrls.get(buffer.uri) || assetBlobUrls.get(basename);
                 if (assetUrl) {
                   buffer.uri = assetUrl;
-                } else {
-                  console.warn(`Buffer URI not found: ${originalUri}`);
                 }
               }
             }
@@ -556,8 +515,6 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
                   assetBlobUrls.get(image.uri) || assetBlobUrls.get(basename);
                 if (assetUrl) {
                   image.uri = assetUrl;
-                } else {
-                  console.warn(`Image URI not found: ${originalUri}`);
                 }
               }
             }
@@ -692,29 +649,14 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
           let modelBlob = await modelResponse.blob();
 
           // Fetch associated assets (textures, buffers, etc.) for all supported formats
-          console.log(
-            "🟢 [ModelViewer] Fetching assets from /api/models/",
-            id,
-            "/assets",
-          );
           const assetsResponse = await fetch(`/api/models/${id}/assets`, {
             headers: {
               Authorization: token ? `Bearer ${token}` : "",
             },
           });
 
-          console.log(
-            "🟢 [ModelViewer] Assets response status:",
-            assetsResponse.status,
-          );
           if (assetsResponse.ok) {
             const assets = await assetsResponse.json();
-            console.log("🟢 [ModelViewer] Fetched assets:", assets);
-            console.log("🟢 [ModelViewer] Asset count:", assets.length);
-            console.log(
-              "🟢 [ModelViewer] Asset IDs available:",
-              assets.map((a: { id: number }) => a.id),
-            );
 
             // Create blob URLs for all assets (works for GLTF, OBJ, etc.)
             const newAssetMap = new Map<string, string>();
@@ -736,9 +678,6 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
                 // 2. Asset ID (MTL files might reference textures by ID)
                 if (asset.id) {
                   newAssetMap.set(asset.id, assetBlobUrl);
-                  console.log(
-                    `[ModelViewer] Mapped asset ID ${asset.id} to ${asset.fileName}`,
-                  );
                 }
 
                 // 3. Just the basename
@@ -756,22 +695,9 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
                 // 5. Full API path that OBJ loaders might use
                 const apiPath = `/api/models/${id}/assets/${basename}`;
                 newAssetMap.set(apiPath, assetBlobUrl);
-
-                console.log(
-                  `[ModelViewer] Stored asset: ${basename} (ID: ${asset.id}) -> ${assetBlobUrl}`,
-                );
               }
             }
             setAssetBlobUrls(newAssetMap);
-            console.log(
-              "[ModelViewer] Asset map keys:",
-              Array.from(newAssetMap.keys()),
-            );
-          } else {
-            console.warn(
-              "[ModelViewer] Assets response not OK:",
-              assetsResponse.status,
-            );
           }
 
           // For GLTF specifically, modify JSON to use blob URLs
@@ -792,8 +718,6 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
                     assetBlobUrls.get(basename);
                   if (assetUrl) {
                     buffer.uri = assetUrl;
-                  } else {
-                    console.warn(`Buffer URI not found: ${originalUri}`);
                   }
                 }
               }

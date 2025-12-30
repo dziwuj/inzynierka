@@ -56,7 +56,7 @@ export class AuthStore {
         await authApi.logout();
       }
     } catch (error) {
-      console.warn("Logout request failed:", error);
+      // Silently handle logout errors
     } finally {
       runInAction(() => {
         this.accessToken = null;
