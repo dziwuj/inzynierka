@@ -275,6 +275,25 @@ router.post(
 );
 
 // ============================================================================
+// Logout
+// ============================================================================
+
+router.post("/logout", async (_req: Request, res: Response) => {
+  try {
+    // Since we're using JWT tokens, logout is handled client-side by removing the token
+    // This endpoint exists for consistency and can be used for future session management
+    res.json({ message: "Logged out successfully" });
+  } catch (error) {
+    console.error("Logout error:", error);
+    res.status(500).json(
+      ErrorResponseSchema.parse({
+        error: "Internal server error",
+      }),
+    );
+  }
+});
+
+// ============================================================================
 // Verify Email
 // ============================================================================
 
