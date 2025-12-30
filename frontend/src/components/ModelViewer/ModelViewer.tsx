@@ -285,7 +285,6 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
     0, 0, 0,
   ]);
   const [gridSize, setGridSize] = useState<number>(100);
-  const [units, setUnits] = useState<string>("units");
   const [showGrid, setShowGrid] = useState<boolean>(true);
   const [isTechnicalModel, setIsTechnicalModel] = useState<boolean>(false);
   const [isStatsPanelOpen, setIsStatsPanelOpen] = useState<boolean>(false);
@@ -842,7 +841,7 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
               <span className={styles.statLabel}>Size:</span>
               <span className={styles.statValue}>
                 {modelDimensions.width} × {modelDimensions.height} ×{" "}
-                {modelDimensions.depth} {units}
+                {modelDimensions.depth}
               </span>
             </div>
           )}
@@ -887,25 +886,6 @@ export const ModelViewer: FC<ModelViewerProps> = observer(({ mode }) => {
                 <option value={10}>10</option>
                 <option value={100}>100</option>
                 <option value={1000}>1000</option>
-              </select>
-            </div>
-          )}
-          {isTechnicalModel && (
-            <div className={styles.statItem}>
-              <label className={styles.statLabel} htmlFor="units">
-                Units:
-              </label>
-              <select
-                id="units"
-                className={styles.statSelect}
-                value={units}
-                onChange={e => setUnits(e.target.value)}>
-                <option value="units">Units</option>
-                <option value="mm">Millimeters</option>
-                <option value="cm">Centimeters</option>
-                <option value="m">Meters</option>
-                <option value="in">Inches</option>
-                <option value="ft">Feet</option>
               </select>
             </div>
           )}
