@@ -55,6 +55,12 @@ export const modelsApi = {
     thumbnail?: Blob | null,
   ): Promise<Model> {
     try {
+      // Get auth token
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+
       // Upload files directly to Vercel Blob using client SDK
       const uploadedFiles = [];
 
@@ -64,6 +70,9 @@ export const modelsApi = {
           access: "public",
           handleUploadUrl: "/api/models/upload-token",
           clientPayload: JSON.stringify({ filename: file.name }),
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         });
 
         uploadedFiles.push({
@@ -78,6 +87,12 @@ export const modelsApi = {
       if (thumbnail) {
         const blob = await upload("thumbnail.jpg", thumbnail, {
           access: "public",
+          handleUploadUrl: "/api/models/upload-token",
+          clientPayload: JSON.stringify({ filename: "thumbnail.jpg" }),
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
           handleUploadUrl: "/api/models/upload-token",
           clientPayload: JSON.stringify({ filename: "thumbnail.jpg" }),
         });
