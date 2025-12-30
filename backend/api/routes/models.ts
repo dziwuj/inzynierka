@@ -1,6 +1,7 @@
 import { put } from "@vercel/blob";
 import { handleUpload } from "@vercel/blob/client";
 import { Request, Response, Router } from "express";
+import jwt from "jsonwebtoken";
 import multer from "multer";
 import { z } from "zod";
 
@@ -39,83 +40,98 @@ const STORAGE_LIMIT_BYTES = 500 * 1024 * 1024;
 // This allows client-side direct uploads to bypass serverless limits
 // ============================================================================
 
-router.post(
-  "/upload-token",
-  authenticate,
-  async (req: Request, res: Response) => {
-    try {
-      const userId = (req as AuthenticatedRequest).userId;
-      const { filename } = req.body;
-
-      if (!filename) {
-        res.status(400).json({
-          error: "Missing filename",
-        });
-        return;
-      }
-
-      // Check storage limit
-      const storageResult = await pool.query(
-        `SELECT COALESCE(SUM(total_size), 0) as used_bytes 
-         FROM models WHERE user_id = $1`,
-        [userId],
-      );
-
-      const usedBytes = parseInt(storageResult.rows[0].used_bytes);
-      if (usedBytes >= STORAGE_LIMIT_BYTES) {
-        res.status(413).json({
-          error: "Storage limit exceeded",
-          message: `You have used ${(usedBytes / (1024 * 1024)).toFixed(2)}MB of ${STORAGE_LIMIT_BYTES / (1024 * 1024)}MB`,
-        });
-        return;
-      }
-
-      // Generate upload token using handleUpload
-      const jsonResponse = await handleUpload({
-        body: req.body,
-        request: req,
-        onBeforeGenerateToken: async () => {
-          // Generate unique pathname
-          const timestamp = Date.now();
-          const randomString = Math.random().toString(36).substring(2, 15);
-          const uniquePathname = `models/${userId}/${timestamp}-${randomString}-${filename}`;
-
-          return {
-            allowedContentTypes: [
-              "model/gltf+json",
-              "model/gltf-binary",
-              "application/octet-stream",
-              "image/png",
-              "image/jpeg",
-              "image/webp",
-              "image/jpg",
-              "text/plain",
-              "application/json",
-            ],
-            maximumSizeInBytes: 500 * 1024 * 1024, // 500MB
-            tokenPayload: JSON.stringify({
-              userId,
-              filename,
-            }),
-            addRandomSuffix: false,
-            pathname: uniquePathname,
-          };
-        },
-        onUploadCompleted: async () => {
-          // No-op - client will call /blob endpoint after all uploads complete
-        },
-      });
-
-      res.json(jsonResponse);
-    } catch (error) {
-      console.error("Generate upload token error:", error);
-      res.status(500).json({
-        error: "Internal server error",
-        message: error instanceof Error ? error.message : "Unknown error",
-      });
+router.post("/upload-token", async (req: Request, res: Response) => {
+  try {
+    // Extract userId from Authorization header manually
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
     }
-  },
-);
+
+    const token = authHeader.substring(7);
+    let userId: string;
+
+    try {
+      const JWT_SECRET =
+        process.env.JWT_SECRET || "your-secret-key-change-in-production";
+      const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+      userId = decoded.userId;
+    } catch {
+      res.status(401).json({ error: "Invalid token" });
+      return;
+    }
+
+    const { filename } = req.body;
+
+    if (!filename) {
+      res.status(400).json({
+        error: "Missing filename",
+      });
+      return;
+    }
+
+    // Check storage limit
+    const storageResult = await pool.query(
+      `SELECT COALESCE(SUM(total_size), 0) as used_bytes 
+       FROM models WHERE user_id = $1`,
+      [userId],
+    );
+
+    const usedBytes = parseInt(storageResult.rows[0].used_bytes);
+    if (usedBytes >= STORAGE_LIMIT_BYTES) {
+      res.status(413).json({
+        error: "Storage limit exceeded",
+        message: `You have used ${(usedBytes / (1024 * 1024)).toFixed(2)}MB of ${STORAGE_LIMIT_BYTES / (1024 * 1024)}MB`,
+      });
+      return;
+    }
+
+    // Generate upload token using handleUpload
+    const jsonResponse = await handleUpload({
+      body: req.body,
+      request: req,
+      onBeforeGenerateToken: async () => {
+        // Generate unique pathname
+        const timestamp = Date.now();
+        const randomString = Math.random().toString(36).substring(2, 15);
+        const uniquePathname = `models/${userId}/${timestamp}-${randomString}-${filename}`;
+
+        return {
+          allowedContentTypes: [
+            "model/gltf+json",
+            "model/gltf-binary",
+            "application/octet-stream",
+            "image/png",
+            "image/jpeg",
+            "image/webp",
+            "image/jpg",
+            "text/plain",
+            "application/json",
+          ],
+          maximumSizeInBytes: 500 * 1024 * 1024, // 500MB
+          tokenPayload: JSON.stringify({
+            userId,
+            filename,
+          }),
+          addRandomSuffix: false,
+          pathname: uniquePathname,
+        };
+      },
+      onUploadCompleted: async () => {
+        // No-op - client will call /blob endpoint after all uploads complete
+      },
+    });
+
+    res.json(jsonResponse);
+  } catch (error) {
+    console.error("Generate upload token error:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
 
 // ============================================================================
 // Legacy: Upload File via Backend (limited by serverless constraints)
