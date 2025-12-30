@@ -56,12 +56,18 @@ router.post(
           user.email === email &&
           (!user.password_hash || user.password_hash === "")
         ) {
-          res.status(400).json(
-            ErrorResponseSchema.parse({
-              error:
-                "This email is already registered via Google. Please sign in with Google or contact support to set a password.",
-            }),
+          // Hash password and add it to the existing account
+          const hashedPassword = await bcrypt.hash(password, 10);
+
+          await pool.query(
+            "UPDATE users SET password_hash = $1, email_verified = true WHERE id = $2",
+            [hashedPassword, user.id],
           );
+
+          res.status(200).json({
+            message:
+              "Password successfully added to your Google account. You can now log in with either method.",
+          });
           return;
         }
 
