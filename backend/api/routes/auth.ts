@@ -67,7 +67,7 @@ router.post(
 
           // Update password and set email as unverified, add verification token
           await pool.query(
-            "UPDATE users SET password_hash = $1, email_verified = false, verification_token = $2, verification_expires_at = $3 WHERE id = $4",
+            "UPDATE users SET password_hash = $1, email_verified = false, email_verification_token = $2, email_verification_expires_at = $3 WHERE id = $4",
             [hashedPassword, verificationToken, verificationExpiresAt, user.id],
           );
 
@@ -277,14 +277,51 @@ router.get("/verify-email", async (req: Request, res: Response) => {
     );
 
     if (pendingResult.rows.length === 0) {
-      // Token not found in pending registrations
-      // Check if there's a verified user (token already used)
-      // We can't match by token since we don't store it after verification
-      // Just return a helpful message
+      // Token not found in pending registrations, check if it's a user account
+      const userResult = await pool.query(
+        `SELECT id, username, email, email_verified, email_verification_expires_at 
+         FROM users 
+         WHERE email_verification_token = $1`,
+        [token],
+      );
+
+      if (userResult.rows.length === 0) {
+        res.status(200).json({
+          message:
+            "This verification link has already been used or has expired. If you already verified your email, you can log in.",
+          alreadyVerified: true,
+        });
+        return;
+      }
+
+      const user = userResult.rows[0];
+
+      // Check if token expired
+      if (
+        user.email_verification_expires_at &&
+        new Date(user.email_verification_expires_at) < new Date()
+      ) {
+        res.status(400).json(
+          ErrorResponseSchema.parse({
+            error: "Verification token has expired. Please request a new one.",
+          }),
+        );
+        return;
+      }
+
+      // Update user to verified
+      await pool.query(
+        `UPDATE users 
+         SET email_verified = TRUE, 
+             email_verification_token = NULL, 
+             email_verification_expires_at = NULL 
+         WHERE id = $1`,
+        [user.id],
+      );
+
       res.status(200).json({
         message:
-          "This verification link has already been used or has expired. If you already verified your email, you can log in.",
-        alreadyVerified: true,
+          "Email verified successfully. You can now log in with your password.",
       });
       return;
     }
@@ -430,8 +467,8 @@ router.post(
 
         await pool.query(
           `UPDATE users 
-           SET verification_token = $1, 
-               verification_expires_at = $2 
+           SET email_verification_token = $1, 
+               email_verification_expires_at = $2 
            WHERE id = $3`,
           [verificationToken, verificationExpiresAt, user.id],
         );
