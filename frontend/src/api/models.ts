@@ -1,4 +1,5 @@
 import client from "./client";
+import { upload } from "@vercel/blob/client";
 
 export interface Model {
   id: string;
@@ -53,60 +54,34 @@ export const modelsApi = {
     thumbnail?: Blob | null,
   ): Promise<Model> {
     try {
-      // Upload files to backend which then uploads to Vercel Blob
+      // Upload files directly to Vercel Blob using client SDK
       const uploadedFiles = [];
 
       for (const file of files) {
-        // Convert file to base64
-        const fileData = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const base64 = (reader.result as string).split(",")[1];
-            resolve(base64);
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-
-        const response = await client.post<
-          { url: string; pathname: string; size: number },
-          { filename: string; contentType: string; fileData: string }
-        >("/models/upload-file", {
-          filename: file.name,
-          contentType: file.type || "application/octet-stream",
-          fileData,
+        // Upload using Vercel Blob client SDK
+        const blob = await upload(file.name, file, {
+          access: "public",
+          handleUploadUrl: "/api/models/upload-token",
+          clientPayload: JSON.stringify({ filename: file.name }),
         });
 
         uploadedFiles.push({
-          url: response.data.url,
-          pathname: response.data.pathname,
-          size: response.data.size,
+          url: blob.url,
+          pathname: blob.pathname,
+          size: file.size,
         });
       }
 
       // Upload thumbnail if available
       let thumbnailUrl = null;
       if (thumbnail) {
-        const thumbData = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const base64 = (reader.result as string).split(",")[1];
-            resolve(base64);
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(thumbnail);
+        const blob = await upload("thumbnail.jpg", thumbnail, {
+          access: "public",
+          handleUploadUrl: "/api/models/upload-token",
+          clientPayload: JSON.stringify({ filename: "thumbnail.jpg" }),
         });
 
-        const thumbResponse = await client.post<
-          { url: string; pathname: string; size: number },
-          { filename: string; contentType: string; fileData: string }
-        >("/models/upload-file", {
-          filename: "thumbnail.jpg",
-          contentType: "image/jpeg",
-          fileData: thumbData,
-        });
-
-        thumbnailUrl = thumbResponse.data.url;
+        thumbnailUrl = blob.url;
       }
 
       // Save metadata to database

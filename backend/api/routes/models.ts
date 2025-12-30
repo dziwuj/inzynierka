@@ -25,7 +25,7 @@ const router = Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 4 * 1024 * 1024, // 4MB per file (Vercel serverless limit)
+    fileSize: 500 * 1024 * 1024, // 500MB per file
     files: 20, // Max 20 files
   },
 });
@@ -34,21 +34,104 @@ const upload = multer({
 const STORAGE_LIMIT_BYTES = 500 * 1024 * 1024;
 
 // ============================================================================
-// Generate Upload URL for Vercel Blob (authenticated)
+// Generate Client Upload Token for Vercel Blob (authenticated)
+// This allows client-side direct uploads to bypass serverless limits
+// ============================================================================
+
+router.post(
+  "/upload-token",
+  authenticate,
+  async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthenticatedRequest).userId;
+      const { filename } = req.body;
+
+      if (!filename) {
+        res.status(400).json({
+          error: "Missing filename",
+        });
+        return;
+      }
+
+      // Check storage limit
+      const storageResult = await pool.query(
+        `SELECT COALESCE(SUM(total_size), 0) as used_bytes 
+         FROM models WHERE user_id = $1`,
+        [userId],
+      );
+
+      const usedBytes = parseInt(storageResult.rows[0].used_bytes);
+      if (usedBytes >= STORAGE_LIMIT_BYTES) {
+        res.status(413).json({
+          error: "Storage limit exceeded",
+          message: `You have used ${(usedBytes / (1024 * 1024)).toFixed(2)}MB of ${STORAGE_LIMIT_BYTES / (1024 * 1024)}MB`,
+        });
+        return;
+      }
+
+      // Generate upload token using handleUpload
+      const jsonResponse = await handleUpload({
+        body: req.body,
+        request: req,
+        onBeforeGenerateToken: async () => {
+          // Generate unique pathname
+          const timestamp = Date.now();
+          const randomString = Math.random().toString(36).substring(2, 15);
+          const uniquePathname = `models/${userId}/${timestamp}-${randomString}-${filename}`;
+
+          return {
+            allowedContentTypes: [
+              "model/gltf+json",
+              "model/gltf-binary",
+              "application/octet-stream",
+              "image/png",
+              "image/jpeg",
+              "image/webp",
+              "image/jpg",
+              "text/plain",
+              "application/json",
+            ],
+            maximumSizeInBytes: 500 * 1024 * 1024, // 500MB
+            tokenPayload: JSON.stringify({
+              userId,
+              filename,
+            }),
+            addRandomSuffix: false,
+            pathname: uniquePathname,
+          };
+        },
+        onUploadCompleted: async () => {
+          // No-op - client will call /blob endpoint after all uploads complete
+        },
+      });
+
+      res.json(jsonResponse);
+    } catch (error) {
+      console.error("Generate upload token error:", error);
+      res.status(500).json({
+        error: "Internal server error",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  },
+);
+
+// ============================================================================
+// Legacy: Upload File via Backend (limited by serverless constraints)
 // ============================================================================
 
 router.post(
   "/upload-file",
   authenticate,
+  upload.single("file"),
   async (req: Request, res: Response) => {
     try {
       const userId = (req as AuthenticatedRequest).userId;
-      const { filename, contentType, fileData } = req.body;
+      const file = req.file;
 
-      // Validate request body
-      if (!filename || !contentType || !fileData) {
+      if (!file) {
         res.status(400).json({
-          error: "Missing required fields: filename, contentType, fileData",
+          error: "No file provided",
         });
         return;
       }
@@ -72,10 +155,7 @@ router.post(
       // Generate a unique pathname for the file
       const timestamp = Date.now();
       const randomString = Math.random().toString(36).substring(2, 15);
-      const pathname = `models/${userId}/${timestamp}-${randomString}-${filename}`;
-
-      // Decode base64 file data
-      const buffer = Buffer.from(fileData, "base64");
+      const pathname = `models/${userId}/${timestamp}-${randomString}-${file.originalname}`;
 
       // Upload to Vercel Blob
       const token = process.env.BLOB_READ_WRITE_TOKEN;
@@ -83,17 +163,17 @@ router.post(
         throw new Error("BLOB_READ_WRITE_TOKEN not configured");
       }
 
-      const blob = await put(pathname, buffer, {
+      const blob = await put(pathname, file.buffer, {
         access: "public",
         token,
         addRandomSuffix: false,
-        contentType,
+        contentType: file.mimetype || "application/octet-stream",
       });
 
       res.json({
         url: blob.url,
         pathname: blob.pathname,
-        size: buffer.length,
+        size: file.size,
       });
     } catch (error) {
       console.error("File upload error:", error);
