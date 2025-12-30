@@ -47,38 +47,24 @@ interface ClientPayload {
 
 router.post("/upload-token", async (req: Request, res: Response) => {
   try {
-    // Log the request body to debug
-    console.log("Request body:", JSON.stringify(req.body, null, 2));
+    // handleUpload sends the request with specific structure:
+    // req.body.payload.clientPayload contains our JSON string
+    const clientPayloadString = req.body.payload?.clientPayload;
 
-    // handleUpload expects specific body structure from Vercel Blob client
-    // The clientPayload might be in different locations depending on the request
-    let clientPayload: ClientPayload = {};
-
-    if (req.body.payload) {
-      // If payload is a string, parse it
-      clientPayload =
-        typeof req.body.payload === "string"
-          ? JSON.parse(req.body.payload)
-          : req.body.payload;
-    } else if (req.body.clientPayload) {
-      clientPayload =
-        typeof req.body.clientPayload === "string"
-          ? JSON.parse(req.body.clientPayload)
-          : req.body.clientPayload;
-    } else {
-      // Fallback: check if filename and token are directly in body
-      clientPayload = req.body;
+    if (!clientPayloadString) {
+      res.status(400).json({
+        error: "Missing clientPayload",
+        debug: { body: req.body },
+      });
+      return;
     }
 
+    const clientPayload: ClientPayload = JSON.parse(clientPayloadString);
     const { filename, token } = clientPayload;
 
     if (!filename || !token) {
       res.status(400).json({
         error: "Missing filename or token in clientPayload",
-        debug: {
-          body: req.body,
-          clientPayload: clientPayload,
-        },
       });
       return;
     }
