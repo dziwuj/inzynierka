@@ -16,7 +16,7 @@ const config: PoolConfig = connectionString
   : {
       host: process.env.DB_HOST || "localhost",
       port: parseInt(process.env.DB_PORT || "5433", 10),
-      database: process.env.DB_NAME || "inzynierka",
+      database: process.env.DB_NAME || "model_viewer",
       user: process.env.DB_OWNER || "your_db_user",
       password: process.env.DB_OWNER_PASSWORD || "your_db_password",
       max: 20,

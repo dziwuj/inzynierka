@@ -79,7 +79,6 @@ export const useAuth = () => {
   };
 
   const useOfflineMode = () => {
-    authStore.setOfflineMode(true);
     navigate("/offline");
   };
 

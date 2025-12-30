@@ -16,7 +16,7 @@ const SUPPORTED_FORMATS = [
     name: "GL Binary Format",
     description: "Binary version of GLTF",
   },
-  { extension: ".fbx", name: "Filmbox", description: "Autodesk 3D format" },
+
   {
     extension: ".obj",
     name: "Wavefront Object",
@@ -46,15 +46,13 @@ const EmptyDashboard = ({
           <p className={styles.subtitle}>
             {isAuthenticated
               ? "You haven't uploaded any models yet. Start by uploading your first 3D model!"
-              : "View and interact with 3D models in your browser. Sign in to save your models."}
+              : "View and interact with 3D models in your browser. Upload a model to get started!"}
           </p>
-          {isAuthenticated && (
-            <div className={styles.actions}>
-              <button className={styles.uploadButton} onClick={onUploadClick}>
-                Upload Your First Model
-              </button>
-            </div>
-          )}
+          <div className={styles.actions}>
+            <button className={styles.uploadButton} onClick={onUploadClick}>
+              {isAuthenticated ? "Upload Your First Model" : "Upload Model"}
+            </button>
+          </div>
         </div>
 
         <div className={styles.formats}>

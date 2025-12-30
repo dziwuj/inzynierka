@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
+import { useStores } from "@stores/useStores";
 import { observer } from "mobx-react";
 import { useNavigate } from "react-router-dom";
 
-import { useStores } from "../../stores/useStores";
+import { EmptyDashboard, UploadModal } from "@/components";
 
-import EmptyDashboard from "./EmptyDashboard/EmptyDashboard";
 import ModelsDashboard from "./ModelsDashboard";
-import UploadModal from "./UploadModal/UploadModal";
 
 import styles from "./Dashboard.module.scss";
+
+import Logo from "@assets/icons/logo.svg";
 
 const Dashboard = observer(() => {
   const navigate = useNavigate();
@@ -30,8 +31,14 @@ const Dashboard = observer(() => {
 
   const handleUploadComplete = () => {
     setIsUploadModalOpen(false);
-    modelsStore.fetchModels();
-    modelsStore.fetchStorageInfo();
+    if (authStore.isOfflineMode) {
+      // Offline mode already updates modelsStore directly
+      modelsStore.loadOfflineModels();
+    } else {
+      // Online mode needs to fetch from server
+      modelsStore.fetchModels();
+      modelsStore.fetchStorageInfo();
+    }
   };
 
   const handleLogout = async () => {
@@ -51,7 +58,12 @@ const Dashboard = observer(() => {
   return (
     <div className={styles.dashboard}>
       <div className={styles.header}>
-        <h1 className={styles.title}>3D Model Viewer</h1>
+        <div className={styles.headerLeft}>
+          <div className={styles.logo}>
+            <img src={Logo} alt="3D Model Viewer Logo" />
+          </div>
+          <h1 className={styles.title}>3D Model Viewer</h1>
+        </div>
         {authStore.isAuthenticated ? (
           <button className={styles.logoutButton} onClick={handleLogout}>
             Logout

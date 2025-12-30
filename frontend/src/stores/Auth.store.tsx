@@ -10,7 +10,6 @@ export class AuthStore {
   accessToken: string | null = null;
   user: User | null = null;
   isAuthenticated = false;
-  isOfflineMode = false;
   loading = false;
 
   constructor(rootStore: RootStore) {
@@ -19,19 +18,24 @@ export class AuthStore {
     this.loadFromStorage();
   }
 
+  // Computed property that checks actual network status
+  get isOfflineMode(): boolean {
+    // If not authenticated, assume offline mode
+    if (!this.isAuthenticated) {
+      return true;
+    }
+    // Check actual network status
+    return !navigator.onLine;
+  }
+
   private loadFromStorage() {
     const token = localStorage.getItem("authToken");
     const user = localStorage.getItem("authUser");
-    const offlineMode = localStorage.getItem("offlineMode") === "true";
 
     if (token && user) {
       this.accessToken = token;
       this.user = JSON.parse(user);
       this.isAuthenticated = true;
-    }
-
-    if (offlineMode) {
-      this.isOfflineMode = true;
     }
   }
 
@@ -46,11 +50,6 @@ export class AuthStore {
     localStorage.setItem("authUser", JSON.stringify(user));
   }
 
-  setOfflineMode(enabled: boolean) {
-    this.isOfflineMode = enabled;
-    localStorage.setItem("offlineMode", enabled.toString());
-  }
-
   async logout() {
     try {
       if (!this.isOfflineMode) {
@@ -59,19 +58,12 @@ export class AuthStore {
     } catch (error) {
       console.warn("Logout request failed:", error);
     } finally {
-      // Clear offline models when logging out
-      if (this.isOfflineMode && this.rootStore.modelsStore) {
-        this.rootStore.modelsStore.clearOfflineModels();
-      }
-
       runInAction(() => {
         this.accessToken = null;
         this.user = null;
         this.isAuthenticated = false;
-        this.isOfflineMode = false;
         localStorage.removeItem("authToken");
         localStorage.removeItem("authUser");
-        localStorage.removeItem("offlineMode");
       });
     }
   }

@@ -7,6 +7,8 @@
 
   &Text {
     max-width: 150px;
+    font-size: 0.95rem;
+    line-height: 1.4;
   }
 
   &Buttons {
@@ -21,8 +23,8 @@
       border: none;
       border-radius: 4px;
       cursor: pointer;
-      font-size: 14px;
-      font-weight: bold;
+      font-size: 0.875rem;
+      font-weight: 600;
       transition: background-color 0.2s ease;
 
       &:first-of-type {
@@ -44,8 +46,9 @@
       text-align: center;
       max-width: none;
       width: 100%;
+      padding-right: 16px;
       margin-bottom: 16px;
-      font-size: 20px;
+      font-size: 1rem;
     }
   }
 }

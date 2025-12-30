@@ -1,11 +1,10 @@
 import { Route, Routes } from "react-router-dom";
 
+import { ModelViewer } from "@/components";
 import {
   DashboardPage,
   LoginPage,
-  ModelViewPage,
   NotFoundPage,
-  OfflineModelViewPage,
   OfflineViewerPage,
   RegisterPage,
   VerifyEmailPage,
@@ -21,10 +20,13 @@ export const AppRouter = () => {
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/offline" element={<OfflineViewerPage />} />
-      <Route path="/offline/view" element={<OfflineModelViewPage />} />
+      <Route
+        path="/offline/view/:id"
+        element={<ModelViewer mode="offline" />}
+      />
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/viewer/:id" element={<ModelViewPage />} />
+        <Route path="/viewer/:id" element={<ModelViewer mode="online" />} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

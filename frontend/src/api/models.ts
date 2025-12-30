@@ -11,6 +11,7 @@ export interface Model {
   thumbnailUrl?: string;
   createdAt: string;
   updatedAt: string;
+  assetData?: Record<string, string>; // For offline models with multiple files
 }
 
 export interface StorageInfo {
@@ -35,20 +36,31 @@ export const modelsApi = {
     return response.data;
   },
 
-  async uploadModel(file: File, name: string): Promise<Model> {
+  async uploadModel(
+    files: File[],
+    name: string,
+    thumbnail?: Blob | null,
+  ): Promise<Model> {
     const formData = new FormData();
-    formData.append("model", file);
+
+    // Append all files
+    files.forEach(file => {
+      formData.append("models", file);
+    });
     formData.append("name", name);
+
+    // Append thumbnail if available
+    if (thumbnail) {
+      formData.append("thumbnail", thumbnail, "thumbnail.jpg");
+    }
 
     const response = await client.upload("/models", formData);
     return (response.data as UploadModelResponse).model;
   },
 
   async deleteModel(id: string): Promise<void> {
-    console.log(`Deleting model with ID: ${id}`);
     try {
-      const response = await client.delete(`/models/${id}`);
-      console.log(`Delete response:`, response);
+      await client.delete(`/models/${id}`);
     } catch (error) {
       console.error(`Failed to delete model ${id}:`, error);
       throw error;

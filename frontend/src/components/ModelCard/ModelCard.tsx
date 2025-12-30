@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { rootStore } from "@stores/Root.store";
 import { Link } from "react-router-dom";
 
 import styles from "./ModelCard.module.scss";
@@ -19,6 +21,54 @@ interface ModelCardProps {
 }
 
 const ModelCard = ({ model, onDelete }: ModelCardProps) => {
+  const [thumbnailBlobUrl, setThumbnailBlobUrl] = useState<string | null>(null);
+
+  // Fetch thumbnail with auth headers and convert to blob URL
+  useEffect(() => {
+    if (!model.thumbnailUrl) return;
+
+    let isMounted = true;
+
+    const fetchThumbnail = async () => {
+      try {
+        const token = rootStore.authStore.accessToken;
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}${model.thumbnailUrl}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            credentials: "include",
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch thumbnail: ${response.status}`);
+        }
+
+        const blob = await response.blob();
+
+        if (isMounted) {
+          const blobUrl = URL.createObjectURL(blob);
+          setThumbnailBlobUrl(blobUrl);
+        }
+      } catch (error) {
+        console.error("Failed to fetch thumbnail:", error);
+      }
+    };
+
+    fetchThumbnail();
+
+    return () => {
+      isMounted = false;
+      if (thumbnailBlobUrl) {
+        URL.revokeObjectURL(thumbnailBlobUrl);
+      }
+    };
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [model.thumbnailUrl]);
+
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -43,8 +93,8 @@ const ModelCard = ({ model, onDelete }: ModelCardProps) => {
   return (
     <div className={styles.modelCard}>
       <Link to={`/viewer/${model.id}`} className={styles.thumbnail}>
-        {model.thumbnailUrl ? (
-          <img src={model.thumbnailUrl} alt={model.name} />
+        {thumbnailBlobUrl ? (
+          <img src={thumbnailBlobUrl} alt={model.name} />
         ) : (
           <div className={styles.placeholder}>
             <span className={styles.fileFormat}>{model.fileFormat}</span>

@@ -3,6 +3,14 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 
 import pool from "../db";
 
+interface DbUser {
+  id: string;
+  username: string;
+  email: string;
+  is_admin: boolean;
+  email_verified: boolean;
+}
+
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
 
@@ -79,8 +87,8 @@ passport.use(
 );
 
 // Serialize user for session
-passport.serializeUser((user: any, done) => {
-  done(null, user.id);
+passport.serializeUser((user: Express.User, done) => {
+  done(null, (user as DbUser).id);
 });
 
 // Deserialize user from session

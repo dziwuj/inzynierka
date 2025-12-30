@@ -30,27 +30,68 @@ export class ModelsStore {
     });
   }
 
-  async uploadOfflineModel(file: File, name: string) {
+  async uploadOfflineModel(files: File[], name: string) {
     this.isUploading = true;
     this.error = null;
 
     try {
-      // Read file as base64 for temporary display
-      const reader = new FileReader();
-      const fileData = await new Promise<string>((resolve, reject) => {
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
+      // Find the main model file
+      const mainFile = files.find(file => {
+        const ext = file.name.split(".").pop()?.toLowerCase();
+        return ["gltf", "glb", "obj", "stl", "ply"].includes(ext || "");
       });
+
+      if (!mainFile) {
+        throw new Error("No valid model file found");
+      }
+
+      // Create a ZIP of all files if multiple, otherwise use single file
+      let fileData: string;
+      let assetData: Record<string, string> | undefined;
+      let fileName: string;
+      let fileSize: number;
+
+      if (files.length === 1) {
+        // Single file - read as data URL
+        const reader = new FileReader();
+        fileData = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(mainFile);
+        });
+        fileName = mainFile.name;
+        fileSize = mainFile.size;
+      } else {
+        // Multiple files - store main file and create asset map
+        const fileMap: Record<string, string> = {};
+
+        for (const file of files) {
+          const reader = new FileReader();
+          const data = await new Promise<string>((resolve, reject) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          fileMap[file.name] = data;
+        }
+
+        // Main file data
+        fileData = fileMap[mainFile.name];
+        // All files including main
+        assetData = fileMap;
+        fileName = mainFile.name;
+        fileSize = files.reduce((sum, f) => sum + f.size, 0);
+      }
 
       const newModel: Model = {
         id: `offline-${Date.now()}`,
         userId: "offline",
         name,
-        fileName: file.name,
-        fileSize: file.size,
-        fileFormat: file.name.split(".").pop()?.toUpperCase() || "UNKNOWN",
+        fileName,
+        fileSize,
+        fileFormat: mainFile.name.split(".").pop()?.toUpperCase() || "UNKNOWN",
         fileUrl: fileData,
+        assetData,
         thumbnailUrl: undefined,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -59,8 +100,19 @@ export class ModelsStore {
       runInAction(() => {
         // Replace any existing model (only one at a time)
         this.models = [newModel];
+        console.log(
+          "[ModelsStore] Created offline model:",
+          newModel.id,
+          "with",
+          Object.keys(newModel.assetData || {}).length,
+          "assets",
+        );
+        console.log(
+          "[ModelsStore] Asset keys:",
+          Object.keys(newModel.assetData || {}),
+        );
         this.storageInfo = {
-          usedBytes: file.size,
+          usedBytes: fileSize,
           maxBytes: 500 * 1024 * 1024,
           modelCount: 1,
         };
@@ -76,7 +128,7 @@ export class ModelsStore {
     }
   }
 
-  deleteOfflineModel(_id: string) {
+  deleteOfflineModel() {
     runInAction(() => {
       this.models = [];
       this.storageInfo = {
@@ -128,12 +180,12 @@ export class ModelsStore {
     }
   }
 
-  async uploadModel(file: File, name: string) {
+  async uploadModel(files: File[], name: string, thumbnail?: Blob | null) {
     this.isUploading = true;
     this.error = null;
 
     try {
-      const model = await modelsApi.uploadModel(file, name);
+      const model = await modelsApi.uploadModel(files, name, thumbnail);
       runInAction(() => {
         this.models.push(model);
         this.isUploading = false;

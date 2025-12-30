@@ -21,11 +21,40 @@
   border-bottom: 2px solid var(--color-gray-300);
 }
 
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.logo {
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  @include mobile {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+}
+
 .title {
   font-size: 2rem;
   font-weight: 700;
   color: var(--color-gray-900);
   margin: 0;
+
+  @include mobile {
+    font-size: 1.5rem;
+  }
 }
 
 .logoutButton {

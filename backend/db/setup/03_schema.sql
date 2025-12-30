@@ -14,6 +14,10 @@ CREATE TABLE IF NOT EXISTS pending_registrations (
     CONSTRAINT unique_pending_username UNIQUE(username)
 );
 
+-- Indexes for pending_registrations
+CREATE INDEX IF NOT EXISTS idx_pending_registrations_token ON pending_registrations(verification_token);
+CREATE INDEX IF NOT EXISTS idx_pending_registrations_expires ON pending_registrations(verification_expires_at);
+
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
     email TEXT UNIQUE NOT NULL,
@@ -33,6 +37,11 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Indexes for users table
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_is_active ON users(is_active) WHERE is_active = TRUE;
+
 CREATE TABLE IF NOT EXISTS devices (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -45,6 +54,9 @@ CREATE TABLE IF NOT EXISTS devices (
     UNIQUE(user_id, device_name, platform, browser)
 );
 
+-- Indexes for devices table
+CREATE INDEX IF NOT EXISTS idx_devices_user_id ON devices(user_id);
+
 CREATE TABLE IF NOT EXISTS login_attempts (
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     was_successful BOOLEAN NOT NULL,
@@ -54,6 +66,10 @@ CREATE TABLE IF NOT EXISTS login_attempts (
     attempt_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY(user_id, attempt_at)
 );
+
+-- Indexes for login_attempts table
+CREATE INDEX IF NOT EXISTS idx_login_attempts_device_id ON login_attempts(device_id);
+CREATE INDEX IF NOT EXISTS idx_login_attempts_success ON login_attempts(was_successful, attempt_at DESC);
 
 CREATE TABLE IF NOT EXISTS sessions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
@@ -65,6 +81,11 @@ CREATE TABLE IF NOT EXISTS sessions (
     expires_at TIMESTAMPTZ NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Indexes for sessions table
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
 
 CREATE TABLE IF NOT EXISTS session_history (
     session_id UUID NOT NULL,
@@ -78,6 +99,10 @@ CREATE TABLE IF NOT EXISTS session_history (
     PRIMARY KEY(session_id, event_at)
 );
 
+-- Indexes for session_history table
+CREATE INDEX IF NOT EXISTS idx_session_history_user_id ON session_history(user_id, event_at DESC);
+CREATE INDEX IF NOT EXISTS idx_session_history_event_type ON session_history(event_type, event_at DESC);
+
 -- ============================================================================
 -- 3D MODELS
 -- ============================================================================
@@ -87,9 +112,8 @@ CREATE TABLE IF NOT EXISTS models (
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     description TEXT,
-    file_data BYTEA NOT NULL,
     file_format TEXT NOT NULL,
-    file_size INTEGER NOT NULL CHECK (file_size > 0),
+    total_size BIGINT NOT NULL DEFAULT 0,
     thumbnail BYTEA,
     thumbnail_type image_mime_type,
     -- Model statistics
@@ -108,17 +132,50 @@ CREATE TABLE IF NOT EXISTS models (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Indexes for models table
+CREATE INDEX IF NOT EXISTS idx_models_user_id ON models(user_id);
+CREATE INDEX IF NOT EXISTS idx_models_created_at ON models(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_models_is_public ON models(is_public) WHERE is_public = TRUE;
+
+-- ============================================================================
+-- MODEL FILES
+-- Stores all files for each model with preserved folder structure
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS model_files (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    model_id UUID NOT NULL REFERENCES models(id) ON DELETE CASCADE,
+    file_path TEXT NOT NULL, -- e.g., 'scene.gltf', 'textures/diffuse.png', 'scene.bin'
+    file_data BYTEA NOT NULL,
+    file_size INTEGER NOT NULL CHECK (file_size > 0),
+    mime_type TEXT,
+    is_main_file BOOLEAN NOT NULL DEFAULT FALSE, -- marks the entry point (e.g., scene.gltf)
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_model_file_path UNIQUE(model_id, file_path)
+);
+
+-- Indexes for model_files table
+CREATE INDEX IF NOT EXISTS idx_model_files_model_id ON model_files(model_id);
+CREATE INDEX IF NOT EXISTS idx_model_files_main ON model_files(model_id, is_main_file) WHERE is_main_file = TRUE;
+
 CREATE TABLE IF NOT EXISTS model_tags (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
     name TEXT UNIQUE NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Indexes for model_tags table
+CREATE INDEX IF NOT EXISTS idx_model_tags_name ON model_tags(name);
+
 CREATE TABLE IF NOT EXISTS models_tags (
     model_id UUID NOT NULL REFERENCES models(id) ON DELETE CASCADE,
     tag_id UUID NOT NULL REFERENCES model_tags(id) ON DELETE CASCADE,
     PRIMARY KEY (model_id, tag_id)
 );
+
+-- Indexes for models_tags table
+CREATE INDEX IF NOT EXISTS idx_models_tags_tag_id ON models_tags(tag_id);
 
 CREATE TABLE IF NOT EXISTS model_parameters (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
@@ -128,6 +185,9 @@ CREATE TABLE IF NOT EXISTS model_parameters (
     parameter_type TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Indexes for model_parameters table
+CREATE INDEX IF NOT EXISTS idx_model_parameters_model_id ON model_parameters(model_id);
 
 -- ============================================================================
 -- MODEL SHARING
@@ -146,6 +206,11 @@ CREATE TABLE IF NOT EXISTS model_shares (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Indexes for model_shares table
+CREATE INDEX IF NOT EXISTS idx_model_shares_model_id ON model_shares(model_id);
+CREATE INDEX IF NOT EXISTS idx_model_shares_token ON model_shares(share_token);
+CREATE INDEX IF NOT EXISTS idx_model_shares_active ON model_shares(is_active) WHERE is_active = TRUE;
+
 CREATE TABLE IF NOT EXISTS model_share_access (
     id UUID DEFAULT uuid_generate_v7(),
     share_id UUID NOT NULL REFERENCES model_shares(id) ON DELETE CASCADE,
@@ -155,6 +220,9 @@ CREATE TABLE IF NOT EXISTS model_share_access (
     accessed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (id, accessed_at)
 );
+
+-- Indexes for model_share_access table
+CREATE INDEX IF NOT EXISTS idx_model_share_access_share_id ON model_share_access(share_id, accessed_at DESC);
 
 -- ============================================================================
 -- NOTIFICATIONS & PUSH
@@ -171,6 +239,10 @@ CREATE TABLE IF NOT EXISTS notifications (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Indexes for notifications table
+CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notifications_created_by ON notifications(created_by);
+
 CREATE TABLE IF NOT EXISTS user_notifications (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -180,6 +252,10 @@ CREATE TABLE IF NOT EXISTS user_notifications (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (user_id, notification_id)
 );
+
+-- Indexes for user_notifications table
+CREATE INDEX IF NOT EXISTS idx_user_notifications_user_id ON user_notifications(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_user_notifications_unread ON user_notifications(user_id, read_at) WHERE read_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS push_subscriptions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
@@ -191,11 +267,18 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Indexes for push_subscriptions table
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_endpoint ON push_subscriptions(endpoint);
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_expires ON push_subscriptions(expires_at) WHERE expires_at IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS user_push_subscriptions (
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     push_subscription_id UUID NOT NULL REFERENCES push_subscriptions(id) ON DELETE CASCADE,
     PRIMARY KEY (user_id, push_subscription_id)
 );
+
+-- Indexes for user_push_subscriptions table
+CREATE INDEX IF NOT EXISTS idx_user_push_subscriptions_subscription_id ON user_push_subscriptions(push_subscription_id);
 
 -- ============================================================================
 -- ANALYTICS & ACTIVITY
@@ -213,3 +296,8 @@ CREATE TABLE IF NOT EXISTS analytics (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (id, created_at)
 );
+
+-- Indexes for analytics table
+CREATE INDEX IF NOT EXISTS idx_analytics_user_id ON analytics(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_analytics_model_id ON analytics(model_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_analytics_category ON analytics(category, action, created_at DESC);

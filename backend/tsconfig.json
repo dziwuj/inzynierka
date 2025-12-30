@@ -25,5 +25,7 @@
     /* Completeness */
     "skipLibCheck": true,
     "resolveJsonModule": true
-  }
+  },
+  "include": ["api/**/*"],
+  "exclude": ["node_modules", "dist", "doc", "db", "docker"]
 }

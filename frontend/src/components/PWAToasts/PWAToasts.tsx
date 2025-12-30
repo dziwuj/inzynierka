@@ -1,18 +1,14 @@
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 import { observer } from "mobx-react";
 import { toast } from "react-toastify";
 import { useRegisterSW } from "virtual:pwa-register/react";
 
-import client from "@/api/client";
 import { ReloadToast } from "@/components";
-import { useStores } from "@/stores/useStores";
 import { type SWNotificationDataType } from "@/types/SWNotifications";
-import { urlBase64ToUint8Array } from "@/utils";
 
 import styles from "./PWAToasts.module.scss";
 
 export const PWAToasts = observer(() => {
-  const { authStore } = useStores();
   // check for updates every hour
   const period = 60 * 60 * 1000;
 
@@ -34,77 +30,13 @@ export const PWAToasts = observer(() => {
     },
   });
 
-  const canHaveNotifications = () => {
-    if (!("serviceWorker" in navigator)) {
-      console.error("No support for service worker!");
-      return false;
-    }
-
-    if (!("Notification" in window)) {
-      console.error("No support for notification API");
-      return false;
-    }
-
-    if (!("PushManager" in window)) {
-      console.error("No support for Push API");
-      return false;
-    }
-
-    return true;
-  };
-
-  const subscribeToPushNotifications = useCallback(async () => {
-    if (!canHaveNotifications() || !authStore.accessToken) return;
-
-    const permission = await Notification.requestPermission();
-
-    if (permission !== "granted") {
-      toast(
-        "Notifications are disabled. Please enable them for a better experience.",
-        {
-          type: "warning",
-          autoClose: 5000,
-        },
-      );
-      return;
-    }
-
-    const reg = await navigator.serviceWorker.ready;
-    console.log(reg);
-    const key = import.meta.env.VITE_VAPID_PUBLIC_KEY;
-    const subscription = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(key),
-    });
-
-    await client.post(
-      "/notifications/subscribe",
-      { subscription },
-      {
-        headers: {
-          Authorization: `Bearer ${authStore.accessToken}`,
-          "Content-Type": "application/json",
-        },
-      },
-    );
-
-    toast("Notifications are enabled!", {
-      type: "success",
-      autoClose: 5000,
-    });
-  }, [authStore.accessToken]);
-
-  // Subscribe to push notifications on component mount
-  useEffect(() => {
-    subscribeToPushNotifications();
-  }, [subscribeToPushNotifications]);
+  // Push notifications functionality removed
 
   // Handle beforeinstallprompt and appinstalled events
   useEffect(() => {
     let deferredPrompt: BeforeInstallPromptEvent | null = null;
 
     const handleAppInstalled = () => {
-      console.log("App installed successfully");
       deferredPrompt = null;
       toast.dismiss("install-prompt");
       toast("App installed successfully!", {
@@ -114,7 +46,6 @@ export const PWAToasts = observer(() => {
     };
 
     const handleBeforeInstallPrompt = (e: BeforeInstallPromptEvent) => {
-      console.log("Install prompt triggered");
       e.preventDefault();
       deferredPrompt = e;
 
@@ -212,12 +143,7 @@ export const PWAToasts = observer(() => {
   // Handle online/offline status
   useEffect(() => {
     const handleOnline = () => {
-      const onlineData: SWNotificationDataType = {
-        title: "You are back online!",
-        buttonText: "Reload",
-        onConfirm: () => location.reload(),
-      };
-      toast(<ReloadToast {...onlineData} />, {
+      toast("You are back online!", {
         type: "success",
         autoClose: 5000,
         toastId: "online-status",

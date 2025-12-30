@@ -96,10 +96,96 @@
   line-height: 1.6;
 }
 
+.dropZone {
+  border: 2px dashed var(--color-gray-400);
+  border-radius: 1rem;
+  padding: 3rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--color-gray-100);
+  margin: 2rem auto;
+  max-width: 600px;
+
+  &:hover {
+    border-color: var(--color-gray-600);
+    background: var(--color-gray-200);
+  }
+
+  &.dragging {
+    border-color: var(--color-gray-900);
+    background: var(--color-gray-300);
+    transform: scale(1.02);
+  }
+}
+
+.dropZoneContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.uploadIcon {
+  font-size: 4rem;
+}
+
+.dropText {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-gray-900);
+  margin: 0;
+}
+
+.dropSubtext {
+  font-size: 0.875rem;
+  color: var(--color-gray-500);
+  margin: 0.25rem 0 0;
+  font-style: italic;
+}
+
+.orText {
+  font-size: 1rem;
+  color: var(--color-gray-600);
+  margin: 0;
+}
+
+.buttonGroup {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.browseButton {
+  @include button-base;
+  @include button-primary;
+  padding: 0.75rem 2rem;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+}
+
+.formatHint {
+  font-size: 0.875rem;
+  color: var(--color-gray-500);
+  margin: 0;
+  line-height: 1.6;
+}
+
 .actions {
   display: flex;
   justify-content: center;
+  gap: 1rem;
   padding: 1rem 0;
+  flex-wrap: wrap;
+}
+
+.uploadButton {
+  @include button-base;
+  @include button-primary;
+  font-size: 1.125rem;
+  padding: 1rem 2rem;
+  border-radius: 0.75rem;
 }
 
 .selectButton {
@@ -111,12 +197,15 @@
 }
 
 .error {
-  margin-top: 1rem;
-  padding: 0.75rem 1.5rem;
-  background: #fee;
-  color: #c33;
-  border-radius: 0.375rem;
+  margin-top: 1.5rem;
+  padding: 1rem 1.5rem;
+  background: var(--color-gray-50);
+  color: var(--color-error);
+  border-radius: 0.5rem;
   font-size: 0.875rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .formatsSection {
@@ -150,7 +239,7 @@
 
   &:hover {
     border-color: var(--color-gray-400);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(var(--color-gray-900-rgb, 33, 37, 41), 0.1);
     transform: translateY(-2px);
   }
 }

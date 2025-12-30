@@ -117,11 +117,10 @@ self.addEventListener("notificationclick", (event: NotificationEvent) => {
   );
 });
 
-self.addEventListener("notificationclose", (event: NotificationEvent) => {
-  const data: object = event.notification.data || {};
-  console.log("Notification closed", data);
-  // Optionally report dismissal telemetry
-});
+// self.addEventListener("notificationclose", (event: NotificationEvent) => {
+//   const data: object = event.notification.data || {};
+//   // Optionally report dismissal telemetry
+// });
 
 self.skipWaiting();
 clientsClaim();

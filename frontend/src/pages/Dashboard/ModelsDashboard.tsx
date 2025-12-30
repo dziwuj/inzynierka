@@ -1,9 +1,7 @@
+import { useStores } from "@stores/useStores";
 import { observer } from "mobx-react";
 
-import { useStores } from "../../stores/useStores";
-
-import ModelCard from "./ModelCard/ModelCard";
-import StorageIndicator from "./StorageIndicator/StorageIndicator";
+import { ModelCard, StorageIndicator } from "@/components";
 
 import styles from "./ModelsDashboard.module.scss";
 
@@ -19,7 +17,7 @@ const ModelsDashboard = observer(({ onUploadClick }: ModelsDashboardProps) => {
       try {
         // Check if it's an offline temporary model by ID format
         if (modelId.startsWith("offline-")) {
-          modelsStore.deleteOfflineModel(modelId);
+          modelsStore.deleteOfflineModel();
         } else {
           await modelsStore.deleteModel(modelId);
         }
@@ -37,7 +35,7 @@ const ModelsDashboard = observer(({ onUploadClick }: ModelsDashboardProps) => {
       <div className={styles.header}>
         <h1 className={styles.title}>My Models</h1>
         <button className={styles.uploadButton} onClick={onUploadClick}>
-          + Upload Model
+          Upload Model
         </button>
       </div>
 

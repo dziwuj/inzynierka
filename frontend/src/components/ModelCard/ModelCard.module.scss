@@ -10,7 +10,7 @@
 
   &:hover {
     border-color: var(--color-gray-400);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(var(--color-gray-900-rgb, 33, 37, 41), 0.1);
     transform: translateY(-2px);
   }
 }
@@ -119,7 +119,7 @@
   color: var(--color-gray-700);
 
   &:hover {
-    background: #ef4444;
+    background: var(--color-error);
     color: white;
   }
 }

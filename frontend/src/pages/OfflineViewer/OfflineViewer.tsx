@@ -1,72 +1,37 @@
-import { type FC, useRef, useState } from "react";
+import { type FC, useState } from "react";
+import { observer } from "mobx-react";
 import { useNavigate } from "react-router-dom";
+
+import { UploadModal } from "@/components";
 
 import styles from "./OfflineViewer.module.scss";
 
 import Logo from "@/assets/icons/logo.svg";
 
-const ALLOWED_EXTENSIONS = [".gltf", ".glb", ".fbx", ".obj", ".stl", ".ply"];
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
-
-export const OfflineViewer: FC = () => {
+export const OfflineViewer: FC = observer(() => {
   const navigate = useNavigate();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [error, setError] = useState("");
-
-  const validateFile = (file: File): string | null => {
-    const extension = "." + file.name.split(".").pop()?.toLowerCase();
-
-    if (!ALLOWED_EXTENSIONS.includes(extension)) {
-      return `Invalid file format. Allowed: ${ALLOWED_EXTENSIONS.join(", ")}`;
-    }
-
-    if (file.size > MAX_FILE_SIZE) {
-      return `File too large. Maximum size: ${MAX_FILE_SIZE / (1024 * 1024)}MB`;
-    }
-
-    return null;
-  };
-
-  const handleFileSelect = async (file: File) => {
-    const validationError = validateFile(file);
-
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-
-    setError("");
-
-    // Read file as data URL and navigate to viewer with it
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      // Navigate to offline model viewer with data URL
-      navigate("/offline/view", {
-        state: { modelData: dataUrl, fileName: file.name },
-      });
-    };
-    reader.onerror = () => {
-      setError("Failed to read file");
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      handleFileSelect(file);
-    }
-  };
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   const handleReturnToLogin = () => {
     navigate("/");
   };
 
+  const handleUploadClick = () => {
+    setIsUploadModalOpen(true);
+  };
+
+  const handleUploadComplete = (modelId?: string) => {
+    setIsUploadModalOpen(false);
+    // Navigate to offline viewer to display the uploaded model
+    if (modelId) {
+      // Just navigate with the ID - the viewer will get the model from the store
+      navigate(`/offline/view/${modelId}`);
+    }
+  };
+
   const SUPPORTED_FORMATS = [
     { name: "GLTF", extension: ".gltf", description: "GL Transmission Format" },
     { name: "GLB", extension: ".glb", description: "Binary GLTF" },
-    { name: "FBX", extension: ".fbx", description: "Autodesk FBX" },
     { name: "OBJ", extension: ".obj", description: "Wavefront OBJ" },
     { name: "STL", extension: ".stl", description: "Stereolithography" },
     { name: "PLY", extension: ".ply", description: "Polygon File Format" },
@@ -90,27 +55,18 @@ export const OfflineViewer: FC = () => {
         <div className={styles.hero}>
           <h1 className={styles.heroTitle}>Welcome to Offline Mode</h1>
           <p className={styles.heroSubtitle}>
-            Select a 3D model file from your device to view it instantly. Your
-            files stay private and are never uploaded.
+            View 3D models directly in your browser. Your files stay private and
+            are never uploaded.
           </p>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={ALLOWED_EXTENSIONS.join(",")}
-            onChange={handleFileInputChange}
-            style={{ display: "none" }}
-          />
 
           <div className={styles.actions}>
             <button
-              className={styles.selectButton}
-              onClick={() => fileInputRef.current?.click()}>
-              Select 3D Model File
+              type="button"
+              className={styles.uploadButton}
+              onClick={handleUploadClick}>
+              Upload Model
             </button>
           </div>
-
-          {error && <div className={styles.error}>{error}</div>}
         </div>
 
         <div className={styles.formatsSection}>
@@ -134,11 +90,18 @@ export const OfflineViewer: FC = () => {
 
         <div className={styles.info}>
           <p>
-            <strong>Note:</strong> Your file is not uploaded anywhere. It stays
-            on your device and is viewed directly in your browser.
+            <strong>🔒 Privacy:</strong> Your files are not uploaded anywhere.
+            They stay on your device and are viewed directly in your browser.
           </p>
         </div>
       </div>
+
+      {isUploadModalOpen && (
+        <UploadModal
+          onClose={() => setIsUploadModalOpen(false)}
+          onUploadComplete={handleUploadComplete}
+        />
+      )}
     </div>
   );
-};
+});

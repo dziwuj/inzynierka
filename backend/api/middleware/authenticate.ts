@@ -11,6 +11,12 @@ export interface JwtPayload {
   isAdmin: boolean;
 }
 
+export interface AuthenticatedRequest extends Request {
+  userId: string;
+  userEmail: string;
+  isAdmin: boolean;
+}
+
 export const authenticate = (
   req: Request,
   res: Response,
@@ -31,11 +37,11 @@ export const authenticate = (
 
     try {
       const decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
-      (req as any).userId = decoded.userId;
-      (req as any).userEmail = decoded.email;
-      (req as any).isAdmin = decoded.isAdmin;
+      (req as AuthenticatedRequest).userId = decoded.userId;
+      (req as AuthenticatedRequest).userEmail = decoded.email;
+      (req as AuthenticatedRequest).isAdmin = decoded.isAdmin;
       next();
-    } catch (error) {
+    } catch {
       res.status(401).json({
         error: "Unauthorized",
         message: "Invalid or expired token",

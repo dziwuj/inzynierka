@@ -12,7 +12,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: ${DB_NAME:-inzynierka}
+      POSTGRES_DB: ${DB_NAME:-model_viewer}
       DB_OWNER: ${DB_OWNER:-database_owner}
       DB_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:-your_db_password}
       PG_PORT: ${DB_PORT:-5433}

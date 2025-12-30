@@ -97,7 +97,7 @@ router.post(
       const verificationExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
       // Store in pending_registrations table instead of users table
-      const insertResult = await pool.query(
+      await pool.query(
         `INSERT INTO pending_registrations (username, email, password_hash, verification_token, verification_expires_at) 
          VALUES ($1, $2, $3, $4, $5)
          RETURNING id`,
@@ -108,10 +108,6 @@ router.post(
           verificationToken,
           verificationExpiresAt,
         ],
-      );
-
-      console.log(
-        `Pending registration created: ID=${insertResult.rows[0]?.id}, email=${email}, token=${verificationToken.substring(0, 20)}...`,
       );
 
       // Send verification email
@@ -242,10 +238,7 @@ router.get("/verify-email", async (req: Request, res: Response) => {
   try {
     const { token } = req.query;
 
-    console.log("Email verification attempt with token:", token);
-
     if (!token || typeof token !== "string") {
-      console.log("Token validation failed - missing or invalid type");
       res.status(400).json(
         ErrorResponseSchema.parse({
           error: "Verification token is required",
@@ -262,15 +255,9 @@ router.get("/verify-email", async (req: Request, res: Response) => {
       [token],
     );
 
-    console.log("Pending registrations found:", pendingResult.rows.length);
-
     if (pendingResult.rows.length === 0) {
       // Token not found in pending registrations
       // Check if there's a verified user (token already used)
-      console.log(
-        "No pending registration found for token, checking if already verified",
-      );
-
       // We can't match by token since we don't store it after verification
       // Just return a helpful message
       res.status(200).json({
@@ -447,29 +434,15 @@ router.get(
 
 router.get(
   "/google/callback",
-  (req: Request, res: Response, next) => {
-    console.log("🔵 Google OAuth callback received:", {
-      url: req.url,
-      query: req.query,
-      headers: {
-        host: req.headers.host,
-        origin: req.headers.origin,
-        referer: req.headers.referer,
-      },
-    });
-    next();
-  },
   passport.authenticate("google", {
     session: false,
     failureRedirect: `${FRONTEND_URL}/login?error=oauth_failed`,
   }),
   (req: Request, res: Response) => {
     try {
-      console.log("✅ Google OAuth authentication successful");
       const user = req.user as User;
 
       if (!user) {
-        console.log("❌ No user after OAuth");
         res.redirect(`${FRONTEND_URL}/login?error=oauth_failed`);
         return;
       }
@@ -486,7 +459,6 @@ router.get(
         { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions,
       );
 
-      console.log("🔑 JWT token generated, redirecting to frontend");
       // Redirect to frontend with token
       res.redirect(
         `${FRONTEND_URL}/login?token=${token}&user=${encodeURIComponent(JSON.stringify(user))}`,
