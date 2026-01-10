@@ -111,6 +111,10 @@ router.post("/upload-token", async (req: Request, res: Response) => {
           allowedContentTypes: [
             "model/gltf+json",
             "model/gltf-binary",
+            "model/obj",
+            "model/stl",
+            "model/ply",
+            "model/mtl",
             "application/octet-stream",
             "image/png",
             "image/jpeg",
