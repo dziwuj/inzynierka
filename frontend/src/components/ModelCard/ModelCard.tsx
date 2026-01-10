@@ -114,6 +114,10 @@ const ModelCard = ({ model, onDelete }: ModelCardProps) => {
 
         <div className={styles.meta}>
           <span className={styles.metaItem}>
+            <span className={styles.metaLabel}>Format:</span>{" "}
+            {model.fileFormat.toUpperCase()}
+          </span>
+          <span className={styles.metaItem}>
             <span className={styles.metaLabel}>Size:</span>{" "}
             {formatFileSize(model.fileSize)}
           </span>
